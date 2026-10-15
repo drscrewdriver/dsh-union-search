@@ -1,7 +1,7 @@
 {
-  "name": "dsh-free-search",
-  "version": "0.9.22",
-  "description": "Free web search for DeepSeek Harness: 23 engines (Bing/DuckDuckGo/AnySearch/SearXNG/Exa/Tavily/Keenable/Firecrawl/Parallel keyless; Zhihu global/site via MCP and Perplexity/SerpBase/DeepSeek/You.com/Baidu/Kimi/Aliyun/Doubao with key; OpenAI/Gemini/Claude model built-in search, explicit-only) + auto smart routing + global engine enable/disable & fallback priority + multi mode (parallel top-3 merge) + multi_search cross-source tool + failure-aware fallback (quota/auth cooldown, transient retry, fallbackOn) + time filtering + platform search + web_fetch, with web settings UI.",
+  "name": "@drscrewdriver/dsh-free-search",
+  "version": "0.9.28",
+  "description": "Free web search for DeepSeek Harness: 28 engines (Bing/DuckDuckGo/AnySearch/SearXNG/Exa/Tavily/Keenable/Firecrawl/Parallel keyless; Zhihu global/site via MCP and Perplexity/SerpBase/Serply/DeepSeek/You.com/Baidu/Kimi/Aliyun/Doubao/Zhipu/Bocha/Metaso with key; OpenAI/Gemini/Claude/Grok model built-in search, explicit-only) + auto smart routing + global engine enable/disable & fallback priority + multi mode (parallel top-3 merge) + multi_search cross-source tool + failure-aware fallback (quota/auth cooldown, transient retry, fallbackOn) + time filtering + platform search + web_fetch, with web settings UI.",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -42,7 +42,14 @@
     "doubao",
     "volcengine",
     "volcano",
-    "zhihu"
+    "zhihu",
+    "zhipu",
+    "bigmodel",
+    "bocha",
+    "metaso",
+    "grok",
+    "xai",
+    "x-search"
   ],
   "license": "MIT",
   "publishConfig": {

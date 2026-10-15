@@ -29,16 +29,16 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 ### 特性
 
 - **零成本** —— 多个免费引擎，无需 key、无需注册
-- **多引擎可选**：DuckDuckGo（html/lite）、Bing、SearXNG（元搜索，支持自定义实例）、AnySearch、Exa、Tavily、Keenable、Firecrawl、Parallel、Perplexity、SerpBase、Serply、DeepSeek 官方、You.com、百度千帆、Kimi、阿里云百炼、火山联网搜索（豆包搜索）、知乎全网/站内（`zhihu_global`/`zhihu_site`，经知乎开放平台 MCP）、OpenAI / Gemini / Claude 模型内置搜索
+- **多引擎可选**：DuckDuckGo（html/lite）、Bing、SearXNG（元搜索，支持自定义实例）、AnySearch、Exa、Tavily、Keenable、Firecrawl、Parallel、Perplexity、SerpBase、Serply、DeepSeek 官方、You.com、百度千帆、Kimi、阿里云百炼、火山联网搜索（豆包搜索）、知乎全网/站内（`zhihu_global`/`zhihu_site`，经知乎开放平台 MCP）、智谱 Web Search（`zhipu`，普通平台 Key）、博查（`bocha`，DeepSeek 官方供应方）、秘塔（`metaso`，多模态）、OpenAI / Gemini / Claude / Grok（`grok`，xAI Responses API `x_search` 搜 X/Twitter）模型内置搜索
 - **网页设置页** —— 引擎切换 + API key 配置（UI 中 key 脱敏显示"已配置"）+ 中英文切换；入口在左侧「插件」页的组件行配置（`plugins.row.config`，DSH 0.1.7-rc.1+）
 - **弹出式切换命令** —— 聊天框输入 `/free-search-engine`，弹出引擎选择窗口，点选即切换（等效设置页 + 保存）
-- **引擎测试** —— `free_search_test` 工具让 agent 一键测试所有引擎；设置页也有"测试引擎"按钮（直测当前引擎，不走回退链，付费引擎无 key 会明确报错）
+- **引擎测试** —— 设置卡「测试全部引擎」一键逐个测试并列出结果，失败引擎进入建议禁用清单（勾选后「应用禁用」，保存生效；auto/multi 虚拟模式不会入列）；另有「测试引擎」按钮（直测当前引擎，不走回退链，付费引擎无 key 会明确报错）
 - **全局引擎开关与回退优先级** —— 设置页可勾选/取消引擎（取消后全局生效：普通搜索 / Auto / `advanced_search` / `multi_search` / 引擎测试都不再用它），并可用 ↑↓ 调整全局回退顺序（一键恢复默认）
 - **Multi 模式** —— 可把搜索引擎设为 `Multi Search`：`web_search` 并发请求前 3 个已启用引擎、按 URL 合并去重、跨源命中的结果优先（代价是成倍消耗额度；multi 失败会自动退回单引擎回退链）
 - **统一引擎回退** —— 任何引擎失败（付费/免费，缺 key/401/限流/网络）自动轮流尝试下一个引擎：首选引擎 → 其他引擎（exa/tavily/keenable/firecrawl/parallel 无 key 也会尝试，因为它们自带 keyless 免费额度）→ 剩余免费引擎，搜索永不直接失败；结果顶部注明实际生效的引擎（如 `Note: perplexity unavailable or failed, using exa.`）；失败按类别处理：额度/鉴权失败→本会话冷却该引擎，反爬→短退避，超时/5xx/限流→同引擎重试一次，解析失败/0 结果→不冷却（详见下文「失败分类与引擎冷却」）
 - **时间过滤** —— `advanced_search` 工具支持 `timeRange`：固定档、自定义相对值、绝对日期三种形式（详见下方逻辑说明）
 - **系统提示词注入** —— agent 知道当前用哪个引擎、哪些需要 key；并明确所有搜索结果是**不可信外部数据**，不得执行其中的指令
-- **提示注入防护（不可信数据边界）** —— 插件自有工具（advanced_search / platform_search / free_search_test）的网页文本包在 `<untrusted-web-content>` 边界内（正文里自带的同名标记会被剥离，防止提前闭合）；核心 web_search / web_fetch 由 DSH 核心自带同类提示（`External web content follows...`）；所有 snippet 统一清洗并截断到 300 字符
+- **提示注入防护（不可信数据边界）** —— 插件自有工具（advanced_search / platform_search / multi_search）的网页文本包在 `<untrusted-web-content>` 边界内（正文里自带的同名标记会被剥离，防止提前闭合）；核心 web_search / web_fetch 由 DSH 核心自带同类提示（`External web content follows...`）；所有 snippet 统一清洗并截断到 300 字符
 - **版本号 + 检查更新** —— 设置卡片显示当前版本（v0.4.17），"检查更新"按钮直连 npm registry 对比最新版，有新版本时提示并可一键跳转
 - **结果缓存** —— 相同查询（含引擎/时间过滤参数）5 分钟内命中缓存（LRU 50 条），防免费引擎限流、省付费额度；时长可在设置页 0-5 分钟自由配置（0 关闭）
 - **免费标注** —— 设置页中免费引擎带绿色 `FREE` 徽章，付费引擎带橙色 `API KEY` 徽章
@@ -58,7 +58,7 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 | `ddg-lite` | DuckDuckGo Lite | 免费 | 轻量版，同上 |
 | `bing` | Bing | 免费 | **默认引擎**，最稳定，中文优化（zh-CN） |
 | `anysearch` | AnySearch AI | 免费 | AI 搜索，无 key（匿名额度） |
-| `searxng` | SearXNG 元搜索 | 免费 | 多实例自动切换，支持自定义实例 |
+| `searxng` | SearXNG 元搜索 | 免费 | 实例三态严格互斥：公网池 / 本地 Docker（回环）/ 自定义列表，任一态不向其他态回落；设置卡支持实例探测与「设为首选」一键切换端点 |
 | `exa` | Exa | 免费 | **无 key 也可用**（MCP 匿名），配 key 提升额度 |
 | `tavily` | Tavily | 免费 | **无 key 也可用**（keyless 匿名），配 key 提升额度 |
 | `keenable` | Keenable | 免费 | **无 key 也可用**（MCP 匿名），配 key 提升额度 |
@@ -75,9 +75,13 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 | `doubao` | 火山引擎联网搜索（豆包搜索） | 免费额度 | 需 `DOUBAO_SEARCH_API_KEY`（联网搜索控制台开通，**每月 500 次免费**，超出按量付费）；中文时效内容强，支持时间/站点过滤，返回千字级摘要 |
 | `zhihu_global` | 知乎全网搜索（开放平台 MCP） | 付费 | 需 `ZHIHU_API_KEY`；支持时间过滤（`publish_time`）；无 key 时自动跳过 |
 | `zhihu_site` | 知乎站内搜索（开放平台 MCP） | 付费 | 需 `ZHIHU_API_KEY`；不支持时间过滤 |
+| `zhipu` | 智谱 Web Search | 付费 | 需 `ZHIPU_API_KEY`（普通平台 Key，非 Coding Plan）；REST `/api/paas/v4/web_search`；`search_pro` 约 0.03 元/次（`search_std` 0.01 / `search_pro_sogou`、`search_pro_quark` 0.05，可经 `zhipuEngine` 切档）；支持时间过滤（`search_recency_filter`） |
+| `bocha` | 博查 AI 搜索 | 付费 | 需 `BOCHA_API_KEY`（open.bochaai.com，注册送额度）；DeepSeek 官方联网供应方，中文强；约 0.036 元/次；支持时间过滤（`freshness`） |
+| `metaso` | 秘塔 AI 搜索 | 免费额度 | 需 `METASO_API_KEY`（mk- 开头，注册送 5000 点）；约 0.03 元/query；支持网页/学术/文库/播客多模态（`metasoScope`） |
 | `openai` | OpenAI 模型内置搜索 | 付费 | 需 `OPENAI_API_KEY`；走 Responses API 的 `web_search` 工具，返回带引用的回答。**按次计费，仅在显式选中时使用**（不参与自动回退/auto）；默认 `gpt-6-luna`，模型与端点可配（`openaiModel` / `openaiBaseUrl`） |
 | `gemini` | Gemini Grounding with Google Search | 付费 | 需 `GEMINI_API_KEY`（兼容 `GOOGLE_API_KEY`）；走官方推荐的 **Interactions API**（`POST /v1beta/interactions`，`tools:[{type:"google_search"}]`），从 `steps[].content[].annotations` 取引用。**按次计费，仅在显式选中时使用**；默认 `gemini-3.8-flash`，模型与端点可配（`geminiModel` / `geminiBaseUrl`） |
 | `claude` | Claude 服务端 web_search | 付费 | 需 `ANTHROPIC_API_KEY`；结果来自 `web_search_tool_result`。**按次计费，仅在显式选中时使用**；默认 `claude-sonnet-5-5`，模型与端点可配（`claudeModel` / `claudeBaseUrl`） |
+| `grok` | Grok · X (Twitter) 搜索 | 付费 | 需 `XAI_API_KEY`（console.x.ai）；走 xAI Responses API 的 `x_search` 工具，返回带引用的 X 帖子。**按 token+按次计费，仅在显式选中时使用**；默认 `grok-4.2`，模型与端点可配（`grokModel` / `grokBaseUrl`） |
 
 - **默认引擎为 `bing`**（免费且最稳定），安装后开箱即用。
 - **自动回退**：任何引擎失败（免费限流/反爬，付费缺 key/无效/网络错误）都会自动轮流尝试下一个引擎——先试其他已配 key 的付费引擎，再试免费引擎（Bing/AnySearch 等），并在结果中附带回退提示——搜索不会因引擎问题直接失败。
@@ -92,6 +96,10 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
   - DeepSeek：<https://platform.deepseek.com/api_keys>
   - 豆包搜索（火山联网搜索）：<https://console.volcengine.com/search-infinity/web-search>
   - You.com：<https://you.com/platform/api-keys>
+  - 智谱：<https://bigmodel.cn/usercenter/proj-mgmt/apikeys>
+  - 博查：<https://open.bochaai.com>
+  - 秘塔：<https://metaso.cn>
+  - xAI（Grok）：<https://console.x.ai>
 
 #### 为什么免费引擎不需要 key？
 
@@ -104,9 +112,17 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 ### 安装
 
 ```sh
+# npm（推荐，0.9.27+）
+dsh plugin --profile web add @drscrewdriver/dsh-free-search
+
+# 或从源码/本地 tgz 安装
 git clone https://github.com/DDDMUC/dsh-free-search.git
 dsh plugin --profile web add /path/to/dsh-free-search
 ```
+
+注意：不要用 npm 别名把 scoped 包装成裸名（例如 `"dsh-free-search": "npm:@drscrewdriver/dsh-free-search@..."`）。
+DSH 以「bundle 行名 == 包内 `name`」判定客户端半（`dsh-client-modules`：`locatePkgJson -> nearestPackage`），
+别名会让浏览器半被判为「非客户端包」，bundle 设置卡、家族 tab、`/free-search-engine` 命令会全部静默消失（0.9.26 实测事故）。
 
 然后重启：
 
@@ -251,16 +267,9 @@ serplyApiKey: ...           # 或通过设置页填写
 deepseekApiKey: ...
 ```
 
-#### 让 agent 测试所有引擎
+#### 一键测试全部引擎
 
-对 agent 说"测试一下所有搜索引擎"，它会调用 `free_search_test` 工具，逐个测试并报告：
-
-```
-Search engine test:
-- ddg: FAIL - DuckDuckGo is rate-limited right now (anti-bot challenge, usually temporary) - Bing works
-- bing: OK (2 results, e.g. "DeepSeek Harness developer preview...")
-- exa: FAIL - EXA_API_KEY not configured
-```
+设置卡底部点「测试全部引擎」，host 端逐个测试并列出结果；失败的引擎会进入建议禁用清单（默认全勾选），取消勾选不想禁用的项后点「应用禁用」再保存即可。暂时性故障（CAPTCHA/限流）可以跳过不禁用，日后随时可在引擎勾选区恢复。
 
 #### 时间过滤（advanced_search）
 
@@ -399,13 +408,13 @@ This plugin provides multiple free search engines with automatic fallback, compl
 - **Multi-Engine Support** — DuckDuckGo (HTML / Lite), Bing, AnySearch AI, SearXNG (meta-search with custom instances), Exa, Tavily, Keenable, Firecrawl, Parallel, Perplexity, SerpBase, Serply, DeepSeek Official, You.com, Baidu Qianfan, Kimi, Aliyun Bailian, Volcano Doubao, Zhihu web-wide/site search (`zhihu_global`/`zhihu_site`, via the Zhihu open-platform MCP), and the model-based OpenAI / Gemini / Claude searches
 - **Web Settings UI** — Engine switching, API key configuration (keys masked as "configured" in the UI), and a Chinese/English toggle; the entry is the component-row config (`plugins.row.config`) on the sidebar Plugins page (DSH 0.1.7-rc.1+)
 - **Popup Switch Command** — Type `/free-search-engine` in the chat: a picker opens with all engines; click one to switch (equivalent to the settings page + save)
-- **Engine Testing** — `free_search_test` for the agent to check all engines in one call; the settings UI also has a "Test engine" button that tests the selected engine directly (no fallback chain; paid engines without a key report an explicit error)
+- **Engine Testing** — the settings card has a "Test all engines" button that checks every engine sequentially; failed engines appear in a tick-to-disable suggestion list (Apply → Save to persist; the auto/multi virtual modes are never listed). There is also a "Test engine" button that tests the selected engine directly (no fallback chain; paid engines without a key report an explicit error)
 - **Global engine enable/disable & fallback priority** — uncheck engines you never want (applies everywhere: web_search fallback, Auto routing, advanced_search, multi_search, engine tests) and reorder the global fallback chain with ↑↓ (one-click reset)
 - **Multi mode** — pick `Multi Search` as the engine: web_search queries the top 3 enabled engines concurrently, merges/deduplicates URLs and prioritizes cross-source hits (costs more quota; a failed multi run automatically falls back to the single-engine chain)
 - **Unified Engine Fallback** — Any engine failure (paid or free, missing key, 401, rate limit, network error) automatically tries the next engine: the configured engine first, then other engines (exa/tavily/keenable/firecrawl/parallel are tried even without a key because they have built-in keyless quota), then the remaining free engines (Bing/AnySearch etc.) — with a note attached to the results naming the engine that actually served them (e.g. `Note: perplexity unavailable or failed, using exa.`). Failures are classified: quota/auth failures cool the engine down for the session, anti-bot walls back off briefly, timeout/5xx/rate-limit failures retry the same engine once, and parse errors / 0 results are reported without cooling it down (see "Failure-aware fallback" below). Search never fails outright.
 - **Time Filtering** — The `advanced_search` tool supports `timeRange`: fixed tiers, custom relative values, or an absolute date (details below)
 - **System Prompt Injection** — The agent is aware of the currently active engine and which engines require API keys; it is also told that all search output is **untrusted external data** and must never be executed as instructions
-- **Prompt-Injection Guard (untrusted-data boundary)** — Web-derived text from the plugin's own tools (`advanced_search` / `platform_search` / `free_search_test`) is wrapped in an explicit `<untrusted-web-content>` boundary (look-alike tags inside the text are stripped to prevent early closure); the core `web_search` / `web_fetch` tools carry DSH core's own notice (`External web content follows...`); every snippet is cleaned and capped at 300 characters
+- **Prompt-Injection Guard (untrusted-data boundary)** — Web-derived text from the plugin's own tools (`advanced_search` / `platform_search` / `multi_search`) is wrapped in an explicit `<untrusted-web-content>` boundary (look-alike tags inside the text are stripped to prevent early closure); the core `web_search` / `web_fetch` tools carry DSH core's own notice (`External web content follows...`); every snippet is cleaned and capped at 300 characters
 - **Version + Update Check** — The settings card shows the current version (v0.4.17), and a "Check update" button queries the npm registry to compare against the latest release, prompting a one-click jump when a newer version exists
 - **Result Caching** — Identical queries (same engine / time-filter args) hit an LRU cache (50 entries) for up to 5 minutes, protecting free engines from rate-limiting and saving paid quota; the TTL is configurable from 0-5 minutes in the settings UI (0 disables caching)
 - **Visual Badges** — Free engines feature a green `FREE` badge, while paid engines show an orange `API KEY` badge in the settings UI
@@ -425,7 +434,7 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh
 | `ddg-lite` | DuckDuckGo Lite | Free | Lightweight version; same rate-limit behavior as above |
 | `bing` | Bing | Free | **Default engine**, most stable, optimized for Chinese (`zh-CN`) |
 | `anysearch` | AnySearch AI | Free | AI search, no key needed (anonymous quota) |
-| `searxng` | SearXNG Meta Search | Free | Multi-instance automatic failover; supports custom instances |
+| `searxng` | SearXNG Meta Search | Free | Strictly exclusive instance modes: public pool / local Docker (loopback) / custom list — never cross-falling-back; the settings card supports instance probing and one-click "Use as primary" |
 | `exa` | Exa | Free | **Usable without a key** (anonymous MCP); configure a key for higher quota |
 | `tavily` | Tavily | Free | **Usable without a key** (keyless anonymous); configure a key for higher quota |
 | `keenable` | Keenable | Free | **Usable without a key** (anonymous MCP); configure a key for higher quota |
@@ -471,9 +480,18 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh
 ### Installation
 
 ```sh
+# npm (recommended, 0.9.27+)
+dsh plugin --profile web add @drscrewdriver/dsh-free-search
+
+# or from source / a packed tgz
 git clone https://github.com/DDDMUC/dsh-free-search.git
 dsh plugin --profile web add /path/to/dsh-free-search
 ```
+
+Note: never alias the scoped package back to the bare name (e.g. `"dsh-free-search": "npm:@drscrewdriver/dsh-free-search@..."`).
+DSH identifies a package's client half by "bundle row name == the manifest `name`" (`dsh-client-modules`: `locatePkgJson -> nearestPackage`);
+an alias files the browser half as "not a client row", so the bundle settings card, the family tab and `/free-search-engine`
+silently disappear (measured on 0.9.26).
 
 Then restart:
 
@@ -618,16 +636,9 @@ serplyApiKey: ...           # Or configure via the web settings UI
 deepseekApiKey: ...
 ```
 
-#### Asking the Agent to Test All Engines
+#### Testing All Engines in One Click
 
-Tell the agent *"Test all search engines"*, and it will call the `free_search_test` tool to check each engine sequentially and report back:
-
-```
-Search engine test:
-- ddg: FAIL - DuckDuckGo is rate-limited right now (anti-bot challenge, usually temporary) - Bing works
-- bing: OK (2 results, e.g. "DeepSeek Harness developer preview...")
-- exa: FAIL - EXA_API_KEY not configured
-```
+Click *"Test all engines"* at the bottom of the settings card: the host checks every engine sequentially and lists the results; failed engines enter a tick-to-disable suggestion list (checked by default) — untick transient failures, click *"Apply disable"*, then Save. Disabled engines can be restored anytime in the engine checkboxes above.
 
 #### Time Filtering (`advanced_search`)
 

@@ -25,9 +25,16 @@
 # then failed with `configured web provider "ddg" is not registered`. Leaving the
 # base default (`deepseek-official`) in place means a disabled plugin degrades to
 # the official provider instead of breaking search outright.
+# NOTE (0.9.27): the row `name` must be BOTH the specifier the profile resolves AND
+# the package's own manifest name. dsh-client-modules matches the row specifier
+# against the nearest package.json `name` (locatePkgJson -> nearestPackage) and
+# then uses that manifest name as the boot-graph entry id. An npm alias
+# ("dsh-free-search": "npm:@drscrewdriver/dsh-free-search@...") breaks both: the
+# browser half is filed as "not a client row" and every client surface (bundle
+# settings card, family tab, /free-search-engine) silently disappears.
 - insert:
     - id: web-search-free
-      name: dsh-free-search
+      name: "@drscrewdriver/dsh-free-search"
       config:
         provider: bing
         disabledEngines: []
