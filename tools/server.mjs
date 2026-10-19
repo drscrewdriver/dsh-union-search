@@ -25,7 +25,7 @@ function writeEngine(engine) {
   if (re.test(content)) {
     content = content.replace(re, `$1${engine}`);
   } else {
-    content += `\n# ============================================================\n# 搜索引擎 provider（由 dsh-free-search 切换工具写入）\n# ============================================================\n- id: web\n  config:\n    searchProvider: ${engine}\n`;
+    content += `\n# ============================================================\n# 搜索引擎 provider（由 dsh-union-search 切换工具写入）\n# ============================================================\n- id: web\n  config:\n    searchProvider: ${engine}\n`;
   }
   writeFileSync(PATCH_FILE, content, "utf8");
 }

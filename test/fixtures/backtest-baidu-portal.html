@@ -1,0 +1,34 @@
+<!-- 门户回测样张:0.10.7 news.baidu 类门户的逻辑重构(离线确定性)。
+     覆盖:body 直下散链(div 汤、无语义包裹,文档模式解析回归对象)、布局表格、
+     script 内可见文案、inline 隐藏节点、嵌套列表导航。 -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>新闻 Example 门户</title>
+<script>var PAGE_START = Date.now();</script>
+</head>
+<body>
+<div id="wrapper">
+  <div class="channel-bar">
+    <a href="/">首页</a><a href="/news/">热点</a><a href="/ent/">娱乐</a><a href="/sports/">体育</a>
+  </div>
+  <table class="layout" cellpadding="0" cellspacing="0">
+    <tr>
+      <td class="col-main">
+        <div class="headline"><a href="/news/1.html">头条:示例新闻标题一</a></div>
+        <div class="item"><a href="/news/2.html">示例新闻标题二</a><span class="time">10-19</span></div>
+        <div class="item"><a href="/news/3.html">示例新闻标题三</a></div>
+      </td>
+      <td class="col-side">
+        <ul class="rank">
+          <li><a href="/hot/1.html">热榜一</a></li>
+          <li><a href="/hot/2.html">热榜二</a></li>
+        </ul>
+      </td>
+    </tr>
+  </table>
+  <p style="display:none">隐藏的统计文案</p>
+  <noscript>无脚本文案</noscript>
+</div>
+</body>
+</html>

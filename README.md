@@ -1,6 +1,6 @@
-# dsh-free-search
+# dsh-union-search
 
-**DeepSeek Harness 免费搜索插件 —— 无需 API key，零成本，多引擎可切换。** 一个给 DeepSeek Harness (dsh) 添加多引擎搜索 provider 的插件，注册进 `ctx.web` seam。内置 `web_search` 工具自动选用，支持网页设置页切换引擎、配置 API key、一键测试所有引擎、弹出式命令切换引擎。
+**DeepSeek Harness 联合搜索插件（原 dsh-free-search）—— 免费搜索与多种专业付费搜索 API 的联合体。** 一个给 DeepSeek Harness (dsh) 添加多引擎搜索 provider 的插件，注册进 `ctx.web` seam。内置 `web_search` 工具自动选用，支持网页设置页切换引擎、配置 API key、一键测试所有引擎、弹出式命令切换引擎。免费引擎开箱即用、零成本；也支持接入多种专业付费搜索 API（Perplexity / DeepSeek 官方 / Kimi / 智谱 / 博查 / 秘塔 / 豆包 / You.com / OpenAI / Gemini / Claude / Grok 等）提升结果质量。
 
 [中文](#中文) · [English](#english)
 
@@ -9,8 +9,8 @@
 ## 中文
 
 <div align="center">
-  <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free1.png">
-    <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free1.png" alt="免费引擎设置 (Bing)" width="820" />
+  <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free1.png">
+    <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free1.png" alt="免费引擎设置 (Bing)" width="820" />
   </a>
   <br>
   <sub>▲ 免费引擎（以Bing为例）</sub>
@@ -24,14 +24,14 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 
 ……那么内置搜索必然失败，agent 会告诉你"无法联网"。
 
-这个插件提供多个免费引擎 + 自动回退，彻底摆脱 DeepSeek 官方 key 的依赖。
+这个插件提供多个免费引擎 + 多种专业付费搜索 API + 自动回退：不配任何 key 开箱即用，彻底摆脱 DeepSeek 官方 key 的依赖；配置付费 key 后可获得更高额度与更专业的搜索质量。
 
 ### 特性
 
-- **零成本** —— 多个免费引擎，无需 key、无需注册
+- **免费 + 付费联合** —— 多个零成本免费引擎（无需 key、无需注册）+ 多种专业付费搜索 API（Perplexity / DeepSeek 官方 / Kimi / 智谱 / 博查 / 秘塔 / 豆包 / You.com / OpenAI / Gemini / Claude / Grok 等）；只用免费引擎零成本，配付费 key 提质提额
 - **多引擎可选**：DuckDuckGo（html/lite）、Bing、SearXNG（元搜索，支持自定义实例）、AnySearch、Exa、Tavily、Keenable、Firecrawl、Parallel、Perplexity、SerpBase、Serply、DeepSeek 官方、You.com、百度千帆、Kimi、阿里云百炼、火山联网搜索（豆包搜索）、知乎全网/站内（`zhihu_global`/`zhihu_site`，经知乎开放平台 MCP）、智谱 Web Search（`zhipu`，普通平台 Key）、博查（`bocha`，DeepSeek 官方供应方）、秘塔（`metaso`，多模态）、OpenAI / Gemini / Claude / Grok（`grok`，xAI Responses API `x_search` 搜 X/Twitter）模型内置搜索
 - **网页设置页** —— 引擎切换 + API key 配置（UI 中 key 脱敏显示"已配置"）+ 中英文切换；入口在左侧「插件」页的组件行配置（`plugins.row.config`，DSH 0.1.7-rc.1+）
-- **弹出式切换命令** —— 聊天框输入 `/free-search-engine`，弹出引擎选择窗口，点选即切换（等效设置页 + 保存）
+- **弹出式切换命令** —— 聊天框输入 `/union-search-engine`，弹出引擎选择窗口，点选即切换（等效设置页 + 保存）
 - **引擎测试** —— 设置卡「测试全部引擎」一键逐个测试并列出结果，失败引擎进入建议禁用清单（勾选后「应用禁用」，保存生效；auto/multi 虚拟模式不会入列）；另有「测试引擎」按钮（直测当前引擎，不走回退链，付费引擎无 key 会明确报错）
 - **全局引擎开关与回退优先级** —— 设置页可勾选/取消引擎（取消后全局生效：普通搜索 / Auto / `advanced_search` / `multi_search` / 引擎测试都不再用它），并可用 ↑↓ 调整全局回退顺序（一键恢复默认）
 - **Multi 模式** —— 可把搜索引擎设为 `Multi Search`：`web_search` 并发请求前 3 个已启用引擎、按 URL 合并去重、跨源命中的结果优先（代价是成倍消耗额度；multi 失败会自动退回单引擎回退链）
@@ -43,11 +43,15 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 - **结果缓存** —— 相同查询（含引擎/时间过滤参数）5 分钟内命中缓存（LRU 50 条），防免费引擎限流、省付费额度；时长可在设置页 0-5 分钟自由配置（0 关闭）
 - **免费标注** —— 设置页中免费引擎带绿色 `FREE` 徽章，付费引擎带橙色 `API KEY` 徽章
 - **网页抓取（web_fetch）** —— 让 agent 抓取网页内容（官方 `dsh-web-fetch-http` provider，纯 JS，零额外依赖）
+- **增强抓取（advance_fetch，实验性 · 免费）** —— 在 web_fetch 之上的插件自有工具，零 key、零按次计费（区别于按次计费的付费搜索 API）：整页转 GitHub-Flavored Markdown（转换配置与宿主 tool-web 同款复刻：不可见节点整体剔除、GFM 表格不展开跨列），并支持 CSS `selector` 限定范围与 `fields`（`label=selector|attr`，分号分隔）定向结构化抽取——只要页面的一部分时优先用它。依赖插件自带（turndown + @joplin/turndown-plugin-gfm + cheerio），不碰宿主内部面；输出经门户页脏面清洗（javascript: 等伪协议链接只留文本、布局表全空管道行丢弃、表格内 `<br>` 归一为 " / "、行边界截断不留残句/不拆代理对/不留未闭合代码围栏）；相对链接按最终 URL 自动绝对化并剥离 utm/gclid/fbclid 等跟踪参数；GBK/GB2312 等非 UTF-8 老站按声明字符集解码（header → BOM → meta charset 探测）；200 状态的反爬挑战页（captcha/验证码等文案 + 近空正文）识别为失败而非当正文；RSS/Atom 按文本透传；登录墙/纯客户端渲染站只返回壳并附 note 提示。导航密集型门户页建议优先用 selector/fields 定向抽取；仅 http/https，重定向限 5 跳逐跳复检，**SSRF 地址门默认拒绝回环/内网/云元数据地址**（`advanceFetchAllowPrivate` 可显式放行局域网设备），抓取内容包进不可信边界
 - **平台搜索（platform_search）** —— 搜 GitHub / V2EX / B站 / Reddit / Hacker News / Stack Overflow / 维基百科 / npm / YouTube / Vimeo（公开 API 或免 key 抓取，零依赖）
 - **视频搜索（video_search）** —— 跨站找视频：Bing Videos + DuckDuckGo Videos（免 key，失败互相回退），返回视频链接、标题与来源/时长等元信息
 - **干净集成** —— 实现官方 `WebSearchProvider` seam 接口，与官方插件共存
+- **屏蔽系统自带搜索** —— 设置页「屏蔽系统自带搜索」开关（`blockSystemSearch`）：开启后强制接管 `web_search`，并把出厂官方搜索引擎 `deepseek-official` / rc.2 起的 `deepseek-search-api` 从所有引擎链与接管判据中剔除；保存即生效
+- **SearXNG 返回语言可锁定** —— 设置项 `searxngLanguage`（默认 `auto`）：自动档按 query 文字检测（假名→ja、谚文→ko、西里尔→ru、汉字→zh-CN，判不出落设置页语言兜底）；选具体值（zh-CN/zh-TW/en/ja/ko/ru/de/fr/es/all）则锁定不随 query 变化；非法 locale 自动归一防 400
+- **SearXNG 多实例综合** —— 自定义列表配置 ≥2 个端点时，自动向前两个端点并发双发请求，等两份请求都返回后按 URL 合并去重，双实例共同命中的条目优先；两个都失败才顺序回退剩余实例
 
-如果这个插件帮到了你，欢迎给仓库点个 ⭐（[GitHub](https://github.com/DDDMUC/dsh-free-search)）——星标是开发者继续维护的最大动力，感谢支持！
+如果这个插件帮到了你，欢迎给仓库点个 ⭐（[GitHub](https://github.com/DDDMUC/dsh-union-search)）——星标是开发者继续维护的最大动力，感谢支持！
 
 ### 引擎列表
 
@@ -58,7 +62,7 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 | `ddg-lite` | DuckDuckGo Lite | 免费 | 轻量版，同上 |
 | `bing` | Bing | 免费 | **默认引擎**，最稳定，中文优化（zh-CN） |
 | `anysearch` | AnySearch AI | 免费 | AI 搜索，无 key（匿名额度） |
-| `searxng` | SearXNG 元搜索 | 免费 | 实例三态严格互斥：公网池 / 本地 Docker（回环）/ 自定义列表，任一态不向其他态回落；设置卡支持实例探测与「设为首选」一键切换端点 |
+| `searxng` | SearXNG 元搜索 | 免费 | 实例三态严格互斥：公网池 / 本地 Docker（回环）/ 自定义列表，任一态不向其他态回落；自定义列表 ≥2 端点时自动向前两个并发双发、等两份都返回后综合（双命中条目优先）；返回语言按 query 文字自动判定（假名→ja、谚文→ko、西里尔→ru、汉字→zh-CN），判不出才落设置页语言兜底；聚合网页结果 + 维基卡片（infoboxes）+ 直接答案（answers）；设置卡支持实例探测与「设为首选」一键切换端点 |
 | `exa` | Exa | 免费 | **无 key 也可用**（MCP 匿名），配 key 提升额度 |
 | `tavily` | Tavily | 免费 | **无 key 也可用**（keyless 匿名），配 key 提升额度 |
 | `keenable` | Keenable | 免费 | **无 key 也可用**（MCP 匿名），配 key 提升额度 |
@@ -67,7 +71,7 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 | `perplexity` | Perplexity | 付费 | 需 `PERPLEXITY_API_KEY` |
 | `serpbase` | SerpBase | 付费 | 需 `SERPBASE_API_KEY`（serpbase.dev，注册送 100 次免费额度） |
 | `serply` | Serply | 付费 | 需 `SERPLY_API_KEY`（serply.io，新账户 30 天内 2,500 次免费额度）；Google 网页结果，按设置页语言本地化 |
-| `deepseek-official` | DeepSeek 官方 | 付费 | 需 `DEEPSEEK_API_KEY` |
+| `deepseek-official` | DeepSeek 官方 | 付费 | 需 `DEEPSEEK_API_KEY`；官方定价 Search **$0.75 / 千次成功请求（≈ 单次 5 厘）**（2026-10 口径；经 DSH 宿主的服务端工具调用 2026-11-01 前免费），见下方「DeepSeek 官方定价」 |
 | `you` | You.com | 付费 | 需 `YOUCOM_API_KEY`（you.com/platform/api-keys，注册即送免费额度） |
 | `baidu` | 百度千帆 AI 搜索 | 额度 | 需 `BAIDU_API_KEY`（千帆 AI 搜索，每日赠 50 次，超额按量后付费）；中文全网，支持时间过滤 |
 | `kimi` | Kimi（Moonshot）联网搜索 | 付费 | 需 `MOONSHOT_API_KEY`（basic 约 ￥0.01/次），返回带正文 chunks 的中文结果 |
@@ -109,20 +113,40 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 - **Keenable**：无 key 时走其公开 MCP 端点（`api.keenable.ai/mcp`）匿名调用；配置 `KEENABLE_API_KEY` 后走 REST API（`api.keenable.ai/v1/search`），额度更高、按组织限流。
 - **Firecrawl**：其 `/v2/search` 端点**无需 key** 即可使用（官方文档明确说明，有匿名限流）；配置 `FIRECRAWL_API_KEY` 后可提高限额。支持 `tbs` 时间过滤（`qdr:h/d/w/m/y` 与自定义日期区间）。
 
+#### DeepSeek 官方定价（2026-10，以官方定价页为准）
+
+搜索/抓取是独立按请求计费的 API（与模型 token 费分开）：
+
+| API | 计费单位 | 价格 |
+|---|---|---|
+| Search（联网搜索） | 每 1,000 次成功请求 | $0.75（≈ 单次 ¥0.005・5 厘 @汇率7.1） |
+| Fetch（网页抓取） | 每 1,000 次成功请求 | $0.75（≈ 单次 ¥0.005・5 厘 @汇率7.1） |
+
+> 注：通过 DeepSeek Harness（本宿主）/ Claude Code / Codex 调用时，服务端工具已经会命中 Search/Fetch API；**这部分目前免费，自 2026-11-01 00:00（北京时间）起按次计费**。本插件的 `deepseek-official` 引擎走同一价目表；这也是「屏蔽系统自带搜索」开关存在的背景之一——如果你不想为出厂搜索付费，用免费引擎即可。
+
+模型 token 定价（每百万 tokens，平峰/高峰，1 美元计价）：
+
+| 模型 | 输入（缓存命中） | 输入（缓存未命中） | 输出 |
+|---|---|---|---|
+| `deepseek-flash` | $0.003 / $0.006 | $0.15 / $0.30 | $0.60 / $1.20 |
+| `deepseek-v4-pro` | $0.022 / $0.044 | $0.66 / $1.32 | $1.98 / $3.96 |
+
+高峰时段为周一至周五 UTC 01:00–04:00、06:00–10:00（中国法定节假日除外），其余时段均为平峰，平峰价是高峰价一半。数据来源：<https://api-docs.deepseek.com/quick_start/pricing>。
+
 ### 安装
 
 ```sh
 # npm（推荐，0.9.27+）
-dsh plugin --profile web add @drscrewdriver/dsh-free-search
+dsh plugin --profile web add @drscrewdriver/dsh-union-search
 
 # 或从源码/本地 tgz 安装
-git clone https://github.com/DDDMUC/dsh-free-search.git
-dsh plugin --profile web add /path/to/dsh-free-search
+git clone https://github.com/DDDMUC/dsh-union-search.git
+dsh plugin --profile web add /path/to/dsh-union-search
 ```
 
-注意：不要用 npm 别名把 scoped 包装成裸名（例如 `"dsh-free-search": "npm:@drscrewdriver/dsh-free-search@..."`）。
+注意：不要用 npm 别名把 scoped 包装成裸名（例如 `"dsh-union-search": "npm:@drscrewdriver/dsh-union-search@..."`）。
 DSH 以「bundle 行名 == 包内 `name`」判定客户端半（`dsh-client-modules`：`locatePkgJson -> nearestPackage`），
-别名会让浏览器半被判为「非客户端包」，bundle 设置卡、家族 tab、`/free-search-engine` 命令会全部静默消失（0.9.26 实测事故）。
+别名会让浏览器半被判为「非客户端包」，bundle 设置卡、家族 tab、`/union-search-engine` 命令会全部静默消失（0.9.26 实测事故）。
 
 然后重启：
 
@@ -134,8 +158,9 @@ dsh web
 
 插件加载后**自动接管搜索**（运行时接管，不改配置层）：
 
-- `web.searchProvider` 未设置，或仍是 DSH 出厂默认的官方搜索 `deepseek-official` 时，自动切换为本插件的 provider（id 固定为 `ddg`）；
-- 如果（你或别的插件）已显式选择其他 provider，本插件不抢占，只在启动日志输出 WARN 与切换用的 YAML。
+- `web.searchProvider` 未设置，或仍是 DSH 出厂默认的官方搜索时，自动切换为本插件的 provider（id 固定为 `ddg`）；出厂默认在 0.2.1-rc.2 起有两个 id——`deepseek-official`（Messages 服务端 web_search）与 `deepseek-search-api`（新内置的 Search/Fetch 独立 API），两者都会被识别并接管；
+- 如果（你或别的插件）已显式选择其他 provider，本插件不抢占，只在启动日志输出 WARN 与切换用的 YAML；
+- 设置页开启「屏蔽系统自带搜索」（`blockSystemSearch: true`）后，无论 `web.searchProvider` 指向谁，都强制接管为本插件 provider，且 `deepseek-official` 引擎被从所有引擎链中剔除；保存即生效，无需重启。
 
 **不再往配置里写 `searchProvider: ddg`**：静态覆盖曾导致"悬空引用"——patch 是整段覆盖 config，一旦插件那一行被**停用或跳过**（比如在插件管理器里关掉），配置仍指向 `ddg` 而没有任何东西注册它，于是每次搜索都失败：
 
@@ -144,6 +169,8 @@ Error: configured web provider "ddg" is not registered
 ```
 
 现在没有这层覆盖：插件被停用时 `web.searchProvider` 保持官方默认（`deepseek-official`），搜索至少还能走官方通道；插件启用时由上面的运行时接管切到 `ddg`。
+
+> **0.2.1-rc.2 机制变化**：宿主删掉了可写的运行时选择字段，改为每次调用读 `web` 条配置的 volatile 值（未配置且多个可用 provider 时报 `WEB_PROVIDER_AMBIGUOUS`）。本插件能力探测分流：≤rc.1 仍走内存接管（非持久）；rc.2+ 经 settings 服务把 `web.searchProvider: ddg` 钉进条配置（**持久**）——若后续停用本插件，记得删掉该字段（或拨回官方开关），否则宿主会响亮报 `CONFIGURED_MISSING`；`blockSystemSearch` 开启时同步把 `fetchProvider` 钉回 `http`（web_fetch 保留，钳离按次计费的 `deepseek-fetch-api`）。
 
 > 如果你曾按旧文档手动在 `profiles/<profile>/cordis.patch.yml` 里加过下面这段，而插件没有启用，就会看到上面那条错误——**删掉这段即可**（或重新启用插件）：
 
@@ -162,7 +189,7 @@ Error: configured web provider "ddg" is not registered
 
 #### 姊妹插件：dsh-preset-workbench（预设工作台）
 
-同作者的**姊妹插件**：在设置页里可视化创建/编辑 Agent 预设——分段提示词、15 项能力开关、内置「鲸鱼娘 / 梁神模式」模板，不用手写 YAML。两者搭配：**free-search 解决"AI 联网搜索"、preset-workbench 解决"AI 人设能力编排"**，都是纯免费、开箱即用。
+同作者的**姊妹插件**：在设置页里可视化创建/编辑 Agent 预设——分段提示词、15 项能力开关、内置「鲸鱼娘 / 梁神模式」模板，不用手写 YAML。两者搭配：**union-search 解决"AI 联网搜索"、preset-workbench 解决"AI 人设能力编排"**，都是纯免费、开箱即用。
 
 - 仓库：<https://github.com/DDDMUC/dsh-preset-workbench>
 - 安装：`dsh plugin --profile web add github:DDDMUC/dsh-preset-workbench`
@@ -180,7 +207,7 @@ Error: configured web provider "ddg" is not registered
 
 安装后打开配置页（DSH 0.1.7-rc.1+）：
 
-- 左侧 **插件** 页 → **已安装** 分组 → `free-search` → 点击组件行 `web-search-free`（行内"配置"入口）
+- 左侧 **插件** 页 → **已安装** 分组 → `union-search` → 点击组件行 `web-search-free`（行内"配置"入口）
 
 配置页提供：
 
@@ -195,15 +222,15 @@ Error: configured web provider "ddg" is not registered
 <table align="center" style="border: none; border-collapse: collapse;">
   <tr style="border: none;">
     <td align="center" width="50%" style="border: none; padding: 6px;">
-      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free.png">
-        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free.png" alt="免费引擎设置" width="100%" />
+      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free.png">
+        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free.png" alt="免费引擎设置" width="100%" />
       </a>
       <br>
       <sub>▲ <b>免费引擎</b>（显示绿色 FREE 徽章与官网链接）</sub>
     </td>
     <td align="center" width="50%" style="border: none; padding: 6px;">
-      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-apikey.png">
-        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-apikey.png" alt="付费引擎设置" width="100%" />
+      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-apikey.png">
+        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-apikey.png" alt="付费引擎设置" width="100%" />
       </a>
       <br>
       <sub>▲ <b>付费/API Key 引擎</b>（显示橙色 API KEY 徽章与获取链接）</sub>
@@ -211,9 +238,9 @@ Error: configured web provider "ddg" is not registered
   </tr>
 </table>
 
-#### 聊天框切换引擎（/free-search-engine）
+#### 聊天框切换引擎（/union-search-engine）
 
-不用进设置页也能切换引擎：在聊天框输入 `/free-search-engine`，**弹出引擎选择窗口**（和 `/model` 选模型一样的交互），点选即切换，当前引擎会标记出来。等效于设置页切换 + 保存，且界面语言跟随设置页（中文/英文）。
+不用进设置页也能切换引擎：在聊天框输入 `/union-search-engine`，**弹出引擎选择窗口**（和 `/model` 选模型一样的交互），点选即切换，当前引擎会标记出来。等效于设置页切换 + 保存，且界面语言跟随设置页（中文/英文）。
 
 命令只改首选引擎配置，搜索仍走 `web_search` + 统一回退链：即使首选引擎挂了也会自动换其他引擎，永不直接失败。系统提示词同步刷新。
 
@@ -243,13 +270,17 @@ Error: configured web provider "ddg" is not registered
 
 #### 配置文件
 
-DSH 0.1.7-rc.1 起，配置跟随 profile 的插件条目保存：设置页与 `/free-search-engine` 都会写入当前 profile 的 `cordis.patch.yml` 中 `web-search-free`（`dsh-free-search`）条目的 `config`。
+DSH 0.1.7-rc.1 起，配置跟随 profile 的插件条目保存：设置页与 `/union-search-engine` 都会写入当前 profile 的 `cordis.patch.yml` 中 `web-search-free`（`dsh-union-search`）条目的 `config`。
 
 旧版 `~/.dsh/settings.yaml` 的 `free-search:` 段**不会被 DSH 核心自动导入**（核心的 `importLegacyDocument` 只为 `ui-developer-tools` / `ui-onboarding` / `shell` 三个段提供了映射），原文件在导入其它段后会被改名为 `settings.yaml.imported`，该段的值只留在那里。插件会在启动时检测 `settings.yaml.imported`（或仍存在的 `settings.yaml`）中的 `free-search:` 段，把可识别的字段**一次性补种**进当前 profile 的条目 `config`（写一次后不再重复，可在启动日志看到 `free-search: migrated N field(s)…`）。如果你想手动处理，也可以照着 `settings.yaml.imported` 里的值在插件页行配置中填一遍。
 
 ```yaml
 # profiles/<profile>/cordis.patch.yml 中该条目的 config：
 provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa / tavily / keenable / firecrawl / parallel / perplexity / serpbase / serply / deepseek-official / you / baidu / kimi / aliyun / doubao / openai / gemini / claude / auto / multi
+blockSystemSearch: false    # true = 屏蔽系统自带搜索：强制接管并把 deepseek-official/search-api 移出引擎链
+advanceFetchEnabled: true   # false = 拒绝 advance_fetch 调用（热生效）
+advanceFetchAllowPrivate: false # true = 放行 advance_fetch 访问回环/内网（局域网设备场景；协议/重定向门不变）
+searxngLanguage: auto       # SearXNG 返回语言：auto=按 query 检测；显式值=锁定（zh-CN/zh-TW/en/ja/ko/ru/de/fr/es/all）
 fallbackOn: [quota, auth, bot-wall, transient, invalid-response, unknown]   # 允许触发回退的失败类别；[] = 任何失败都立即中止（默认全部）
 lang: zh                    # 设置页界面语言（zh / en）
 bingMarket: zh-CN           # Bing 市场
@@ -313,10 +344,11 @@ deepseekApiKey: ...
 
 #### 抓取网页内容（web_fetch）
 
-搜索到 URL 后，可以让 agent **读取网页全文**（如"打开第一个链接看看内容"）。`web_fetch` 工具已启用（官方 `dsh-web-fetch-http` provider）：
+搜索到 URL 后，可以让 agent **读取网页全文**（如"打开第一个链接看看内容"）。`web_fetch` 工具已启用（官方 `dsh-web-fetch-http` provider，免费、纯 JS、零额外依赖）：
 
 - 自动跟随重定向、解码正文（HTML 转文本）
 - 支持超时和大小限制
+- **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：本插件不注册 fetch provider、不夺抓取工具；`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单）
 - ⚠️ 注意：`web_fetch` 无 SSRF 防护，agent 理论上可访问内网地址——按需使用
 
 #### 平台搜索（platform_search）
@@ -376,8 +408,8 @@ Windows 用户：桌面快捷方式已内置此配置（`set NODE_USE_ENV_PROXY=
 
 ### 工作原理
 
-- `lib/index.js`：host 端。实现 `WebSearchProvider`（`id` / `available()` / `search()`），统一引擎路由 + 自动回退（付费引擎优先，免费兜底）；解析 `timeRange`（固定档/相对值/绝对日期）并透传给各引擎；在 `web-search-free` 条目上声明可编辑配置（`.volatile()`）并自带设置页（`plugins.row.config`）；提供 `/api/dsh-free-search-settings` 读写桥 + `raw-search` 调试接口；注册 `free_search_test`、`platform_search`、`video_search`、`advanced_search`、`multi_search` 工具；动态注入引擎清单到系统提示词（设置变更时自动刷新）。
-- `lib/client.js`：浏览器端。React 配置卡片（引擎选择 + key 输入 + 连通测试 + 中英切换），挂载到左侧「插件」页的 `plugins.row.config` 行配置插槽；注册 `/free-search-engine` 弹出式切换命令（`commandUi` popupSelect，与 `/model` 同机制）。
+- `lib/index.js`：host 端。实现 `WebSearchProvider`（`id` / `available()` / `search()`），统一引擎路由 + 自动回退（付费引擎优先，免费兜底）；解析 `timeRange`（固定档/相对值/绝对日期）并透传给各引擎；在 `web-search-free` 条目上声明可编辑配置（`.volatile()`）并自带设置页（`plugins.row.config`）；提供 `/api/dsh-union-search-settings` 读写桥 + `raw-search` 调试接口；注册 `free_search_test`、`platform_search`、`video_search`、`advanced_search`、`multi_search` 工具；动态注入引擎清单到系统提示词（设置变更时自动刷新）。
+- `lib/client.js`：浏览器端。React 配置卡片（引擎选择 + key 输入 + 连通测试 + 中英切换），挂载到左侧「插件」页的 `plugins.row.config` 行配置插槽；注册 `/union-search-engine` 弹出式切换命令（`commandUi` popupSelect，与 `/model` 同机制）。
 - `cordis.patch.yml`：插件 loader 配置。
 
 ---
@@ -385,8 +417,8 @@ Windows 用户：桌面快捷方式已内置此配置（`set NODE_USE_ENV_PROXY=
 ## English
 
 <div align="center">
-  <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free1.png">
-    <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free1.png" alt="Free Engine Settings (Bing)" width="820" />
+  <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free1.png">
+    <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free1.png" alt="Free Engine Settings (Bing)" width="820" />
   </a>
   <br>
   <sub>▲ Free engine (using Bing as an example)</sub>
@@ -400,14 +432,14 @@ dsh's default search provider relies on the official DeepSeek API key (`DEEPSEEK
 
 ...then the built-in search will inevitably fail, and the agent will tell you "I cannot access the internet."
 
-This plugin provides multiple free search engines with automatic fallback, completely freeing you from relying on DeepSeek's official key.
+This plugin combines multiple free search engines with many professional paid search APIs and automatic fallback: out of the box it works with zero cost and no DeepSeek key, while paid keys (Perplexity / DeepSeek official / Kimi / Zhipu / Bocha / Metaso / Doubao / You.com / OpenAI / Gemini / Claude / Grok) raise result quality and quotas.
 
 ### Features
 
-- **Zero Cost** — Multiple free engines with no API key or registration required
+- **Free + Paid Union** — Multiple zero-cost free engines (no key, no signup) plus many professional paid search APIs (Perplexity / DeepSeek official / Kimi / Zhipu / Bocha / Metaso / Doubao / You.com / OpenAI / Gemini / Claude / Grok); stay at zero cost on free engines, or upgrade quality/quota with paid keys
 - **Multi-Engine Support** — DuckDuckGo (HTML / Lite), Bing, AnySearch AI, SearXNG (meta-search with custom instances), Exa, Tavily, Keenable, Firecrawl, Parallel, Perplexity, SerpBase, Serply, DeepSeek Official, You.com, Baidu Qianfan, Kimi, Aliyun Bailian, Volcano Doubao, Zhihu web-wide/site search (`zhihu_global`/`zhihu_site`, via the Zhihu open-platform MCP), and the model-based OpenAI / Gemini / Claude searches
 - **Web Settings UI** — Engine switching, API key configuration (keys masked as "configured" in the UI), and a Chinese/English toggle; the entry is the component-row config (`plugins.row.config`) on the sidebar Plugins page (DSH 0.1.7-rc.1+)
-- **Popup Switch Command** — Type `/free-search-engine` in the chat: a picker opens with all engines; click one to switch (equivalent to the settings page + save)
+- **Popup Switch Command** — Type `/union-search-engine` in the chat: a picker opens with all engines; click one to switch (equivalent to the settings page + save)
 - **Engine Testing** — the settings card has a "Test all engines" button that checks every engine sequentially; failed engines appear in a tick-to-disable suggestion list (Apply → Save to persist; the auto/multi virtual modes are never listed). There is also a "Test engine" button that tests the selected engine directly (no fallback chain; paid engines without a key report an explicit error)
 - **Global engine enable/disable & fallback priority** — uncheck engines you never want (applies everywhere: web_search fallback, Auto routing, advanced_search, multi_search, engine tests) and reorder the global fallback chain with ↑↓ (one-click reset)
 - **Multi mode** — pick `Multi Search` as the engine: web_search queries the top 3 enabled engines concurrently, merges/deduplicates URLs and prioritizes cross-source hits (costs more quota; a failed multi run automatically falls back to the single-engine chain)
@@ -419,11 +451,15 @@ This plugin provides multiple free search engines with automatic fallback, compl
 - **Result Caching** — Identical queries (same engine / time-filter args) hit an LRU cache (50 entries) for up to 5 minutes, protecting free engines from rate-limiting and saving paid quota; the TTL is configurable from 0-5 minutes in the settings UI (0 disables caching)
 - **Visual Badges** — Free engines feature a green `FREE` badge, while paid engines show an orange `API KEY` badge in the settings UI
 - **Webpage Fetching (`web_fetch`)** — Allows the agent to read full webpage contents (official `dsh-web-fetch-http` provider, pure JS, zero extra dependencies)
+- **Advanced Fetching (`advance_fetch`, experimental · free)** — a plugin-owned tool on top of web_fetch with no API key and no per-request billing (unlike the metered paid search APIs): whole-page GitHub-Flavored Markdown (replicating the host tool-web's exact turndown profile: invisible nodes dropped, GFM tables without colspan expansion), plus CSS `selector` scoping and `fields` structured extraction (`label=selector|attr`, semicolon-separated) — prefer it when you only need part of a page. Ships its own deps (turndown, @joplin/turndown-plugin-gfm, cheerio) without touching host internals; output is cleaned for portal pages (javascript:-style pseudo links keep text only, layout-table all-empty pipe rows dropped, `<br>` inside table cells normalized to " / ", truncation cuts at line boundaries without splitting surrogate pairs or leaving unclosed code fences); relative links are absolutized against the final URL and tracking params (utm_*/gclid/fbclid/mc_eid/igshid) stripped; non-UTF-8 legacy pages (GBK/GB2312) are decoded via declared charset; HTTP 200 anti-bot challenge pages (captcha wording on a near-empty body) are reported as failures instead of content; RSS/Atom passes through as text; login-walled/client-rendered sites return a shell with an explanatory note. For navigation-heavy portal pages prefer `selector`/`fields` over whole-page markdown; http(s) only, output wrapped in the untrusted boundary
 - **Platform Search (`platform_search`)** — Search GitHub / V2EX / Bilibili / Reddit / Hacker News / Stack Overflow / Wikipedia / npm / YouTube / Vimeo (public APIs or keyless scraping, zero extra dependencies)
 - **Video Search (`video_search`)** — Find videos across the web via Bing Videos + DuckDuckGo Videos (keyless, mutual fallback), returning video links with titles and publisher/duration metadata
 - **Clean Integration** — Implements the official `WebSearchProvider` seam interface, coexisting seamlessly with official plugins
+- **Block built-in system search** — the "Block built-in system search" toggle (`blockSystemSearch`): when on, `web_search` is force-taken-over by this plugin and the shipped official engines (`deepseek-official`, plus `deepseek-search-api` on rc.2+) are excluded from every engine chain; takes effect on save
+- **Lockable SearXNG response language** — `searxngLanguage` (default `auto`): auto detects from the query script (kana→ja, hangul→ko, cyrillic→ru, CJK→zh-CN, falling back to the settings language); picking a concrete value (zh-CN/zh-TW/en/ja/ko/ru/de/fr/es/all) locks it regardless of query; invalid locales are normalized to avoid HTTP 400
+- **SearXNG multi-instance union** — with 2+ custom endpoints configured, the first two are queried concurrently; the plugin waits for both responses, merges and deduplicates by URL, and ranks items hit by both instances first; only when both fail does it fall through to the remaining instances sequentially
 
-If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh-free-search) would mean a lot — it's the biggest motivation for the developer to keep maintaining it. Thank you!
+If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh-union-search) would mean a lot — it's the biggest motivation for the developer to keep maintaining it. Thank you!
 
 ### Supported Engines
 
@@ -434,7 +470,7 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh
 | `ddg-lite` | DuckDuckGo Lite | Free | Lightweight version; same rate-limit behavior as above |
 | `bing` | Bing | Free | **Default engine**, most stable, optimized for Chinese (`zh-CN`) |
 | `anysearch` | AnySearch AI | Free | AI search, no key needed (anonymous quota) |
-| `searxng` | SearXNG Meta Search | Free | Strictly exclusive instance modes: public pool / local Docker (loopback) / custom list — never cross-falling-back; the settings card supports instance probing and one-click "Use as primary" |
+| `searxng` | SearXNG Meta Search | Free | Strictly exclusive instance modes: public pool / local Docker (loopback) / custom list — never cross-falling-back; with 2+ custom endpoints the first two are queried concurrently and merged once both return (cross-hit items ranked first); the response language is auto-detected from the query script (kana→ja, hangul→ko, cyrillic→ru, CJK→zh-CN) with the settings language only as fallback; aggregates web results + wikipedia infobox cards + direct answers; the settings card supports instance probing and one-click "Use as primary" |
 | `exa` | Exa | Free | **Usable without a key** (anonymous MCP); configure a key for higher quota |
 | `tavily` | Tavily | Free | **Usable without a key** (keyless anonymous); configure a key for higher quota |
 | `keenable` | Keenable | Free | **Usable without a key** (anonymous MCP); configure a key for higher quota |
@@ -443,7 +479,7 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh
 | `perplexity` | Perplexity | Paid | Requires `PERPLEXITY_API_KEY` |
 | `serpbase` | SerpBase | Paid | Requires `SERPBASE_API_KEY` (serpbase.dev, 100 free queries on signup) |
 | `serply` | Serply | Paid | Requires `SERPLY_API_KEY` (serply.io, 2,500 free credits for the first 30 days); Google web results localized to the settings language |
-| `deepseek-official` | DeepSeek Official | Paid | Requires `DEEPSEEK_API_KEY` |
+| `deepseek-official` | DeepSeek Official | Paid | Requires `DEEPSEEK_API_KEY`; official pricing: Search **$0.75 per 1,000 successful requests (≈ ¥0.005 per request)** (as of 2026-10; server-side tool calls through the DSH harness are free until 2026-11-01) — see "DeepSeek official pricing" below |
 | `you` | You.com | Paid | Requires `YOUCOM_API_KEY` (you.com/platform/api-keys, free tier on signup) |
 | `baidu` | Baidu Qianfan AI Search | Quota | Requires `BAIDU_API_KEY` (Qianfan AI Search, 50 free calls/day then pay-as-you-go); Chinese web-wide, supports time filtering |
 | `kimi` | Kimi (Moonshot) Web Search | Paid | Requires `MOONSHOT_API_KEY` (basic ~¥0.01/call); returns Chinese results with body chunks |
@@ -477,20 +513,40 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/DDDMUC/dsh
 - **Keenable**: without a key it is called via its public MCP endpoint (`api.keenable.ai/mcp`); configuring `KEENABLE_API_KEY` switches to the REST API (`api.keenable.ai/v1/search`) for higher quota and organization-scoped rate limits.
 - **Firecrawl**: its `/v2/search` endpoint works **without a key** out of the box (the official docs state "No API key needed to get started", with anonymous rate limits); configuring `FIRECRAWL_API_KEY` raises the limits. Supports `tbs` time filtering (`qdr:h/d/w/m/y` and custom date ranges).
 
+#### DeepSeek official pricing (2026-10, per the official pricing page)
+
+Search and Fetch are standalone APIs billed per request (separate from model token fees):
+
+| API | Unit | Price |
+|---|---|---|
+| Search (web search) | per 1,000 successful requests | $0.75 (≈ ¥0.005 ≈ half a cent per request @FX 7.1) |
+| Fetch (webpage fetch) | per 1,000 successful requests | $0.75 (≈ ¥0.005 ≈ half a cent per request @FX 7.1) |
+
+> Note: when the DeepSeek API is used through DeepSeek Harness / Claude Code / Codex, server-side tool calls already hit the Search and Fetch APIs; **these are currently free and per-request billing starts at 00:00 Beijing time on 2026-11-01**. This plugin's `deepseek-official` engine follows the same rate card — one reason the "Block built-in system search" toggle exists: if you don't want to pay for the shipped search, just stay on the free engines.
+
+Model token pricing (per 1M tokens, off-peak / peak, USD):
+
+| Model | Input (cache hit) | Input (cache miss) | Output |
+|---|---|---|---|
+| `deepseek-flash` | $0.003 / $0.006 | $0.15 / $0.30 | $0.60 / $1.20 |
+| `deepseek-v4-pro` | $0.022 / $0.044 | $0.66 / $1.32 | $1.98 / $3.96 |
+
+Peak hours are 01:00–04:00 and 06:00–10:00 UTC Monday–Friday (excluding Chinese public holidays); all other hours are off-peak at half the peak rates. Source: <https://api-docs.deepseek.com/quick_start/pricing>.
+
 ### Installation
 
 ```sh
 # npm (recommended, 0.9.27+)
-dsh plugin --profile web add @drscrewdriver/dsh-free-search
+dsh plugin --profile web add @drscrewdriver/dsh-union-search
 
 # or from source / a packed tgz
-git clone https://github.com/DDDMUC/dsh-free-search.git
-dsh plugin --profile web add /path/to/dsh-free-search
+git clone https://github.com/DDDMUC/dsh-union-search.git
+dsh plugin --profile web add /path/to/dsh-union-search
 ```
 
-Note: never alias the scoped package back to the bare name (e.g. `"dsh-free-search": "npm:@drscrewdriver/dsh-free-search@..."`).
+Note: never alias the scoped package back to the bare name (e.g. `"dsh-union-search": "npm:@drscrewdriver/dsh-union-search@..."`).
 DSH identifies a package's client half by "bundle row name == the manifest `name`" (`dsh-client-modules`: `locatePkgJson -> nearestPackage`);
-an alias files the browser half as "not a client row", so the bundle settings card, the family tab and `/free-search-engine`
+an alias files the browser half as "not a client row", so the bundle settings card, the family tab and `/union-search-engine`
 silently disappear (measured on 0.9.26).
 
 Then restart:
@@ -503,8 +559,9 @@ dsh web
 
 The plugin **takes over search at runtime** once loaded (it does not touch the config layer):
 
-- When `web.searchProvider` is unset, or still the shipped default `deepseek-official`, it switches to this plugin's provider (id: `ddg`);
-- If you (or another plugin) explicitly selected a different provider, it does not steal it — it only logs a WARN with a copy-pasteable YAML snippet.
+- When `web.searchProvider` is unset, or still a shipped default official provider, it switches to this plugin's provider (id: `ddg`); since 0.2.1-rc.2 there are two shipped ids — `deepseek-official` (Messages server-side web_search) and `deepseek-search-api` (the new built-in Search/Fetch standalone API) — and both are recognized and taken over;
+- If you (or another plugin) explicitly selected a different provider, it does not steal it — it only logs a WARN with a copy-pasteable YAML snippet;
+- With the "Block built-in system search" toggle on (`blockSystemSearch: true`), it force-takes-over `web.searchProvider` no matter what it points to, and the `deepseek-official` engine is excluded from every engine chain; takes effect on save, no restart needed.
 
 **It no longer writes `searchProvider: ddg` into the config layer.** A static override used to create a dangling reference: a patch replaces the whole row config, so when the plugin's row was **disabled or skipped** (e.g. switched off in the plugin manager) the config still said `ddg` while nothing registered it, and every search failed with:
 
@@ -513,6 +570,8 @@ Error: configured web provider "ddg" is not registered
 ```
 
 Without that override, a disabled plugin leaves `web.searchProvider` at the shipped default (`deepseek-official`) so search still works through the official provider; when the plugin is enabled the runtime takeover above points it at `ddg`.
+
+> **0.2.1-rc.2 mechanism change**: the host removed the writable runtime selection field and now reads the volatile `web` entry config on every call (unset + multiple usable providers → `WEB_PROVIDER_AMBIGUOUS`). This plugin probes the capability: ≤rc.1 keeps the in-memory takeover (non-persistent); on rc.2+ it pins `web.searchProvider: ddg` into the entry config through the settings service (**persistent**) — if you later disable this plugin, remove that field (or flip the official switch back), otherwise the host fails loudly with `CONFIGURED_MISSING`. With `blockSystemSearch` on, `fetchProvider` is also clamped to `http` (web_fetch is kept; the metered `deepseek-fetch-api` is not).
 
 > If you previously added the snippet below by hand to `profiles/<profile>/cordis.patch.yml` *and* the plugin is not enabled, you will see that error — **just remove the snippet** (or re-enable the plugin):
 
@@ -531,7 +590,7 @@ Without that override, a disabled plugin leaves `web.searchProvider` at the ship
 
 #### Sister Plugin: dsh-preset-workbench
 
-A **sister plugin** by the same author: a **visual workbench for creating/editing agent presets** right inside Settings — sectioned prompts, 15 capability toggles, and built-in "Whale Girl / Liangshen Mode" templates, no YAML needed. Pair them up: **free-search gives your AI web search, preset-workbench shapes its persona & capabilities** — both free and zero-config.
+A **sister plugin** by the same author: a **visual workbench for creating/editing agent presets** right inside Settings — sectioned prompts, 15 capability toggles, and built-in "Whale Girl / Liangshen Mode" templates, no YAML needed. Pair them up: **union-search gives your AI web search, preset-workbench shapes its persona & capabilities** — both free and zero-config.
 
 - Repo: <https://github.com/DDDMUC/dsh-preset-workbench>
 - Install: `dsh plugin --profile web add github:DDDMUC/dsh-preset-workbench`
@@ -549,7 +608,7 @@ This plugin intentionally specifies `@deepseek-ai/dsh-settings` and `@deepseek-a
 
 After installation, open the config page (DSH 0.1.7-rc.1+):
 
-- Sidebar **Plugins** page → **Installed** group → `free-search` → click the `web-search-free` component row (the row's "configure" entry)
+- Sidebar **Plugins** page → **Installed** group → `union-search` → click the `web-search-free` component row (the row's "configure" entry)
 
 The config page provides:
 
@@ -564,15 +623,15 @@ The config page provides:
 <table align="center" style="border: none; border-collapse: collapse;">
   <tr style="border: none;">
     <td align="center" width="50%" style="border: none; padding: 6px;">
-      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free.png">
-        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-free.png" alt="Free Engine Settings" width="100%" />
+      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free.png">
+        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-free.png" alt="Free Engine Settings" width="100%" />
       </a>
       <br>
       <sub>▲ <b>Free Engine</b> (shows green FREE badge and official website link)</sub>
     </td>
     <td align="center" width="50%" style="border: none; padding: 6px;">
-      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-apikey.png">
-        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-free-search/master/assets/settings-apikey.png" alt="Paid/API Key Engine Settings" width="100%" />
+      <a href="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-apikey.png">
+        <img src="https://raw.githubusercontent.com/DDDMUC/dsh-union-search/master/assets/settings-apikey.png" alt="Paid/API Key Engine Settings" width="100%" />
       </a>
       <br>
       <sub>▲ <b>Paid / API Key Engine</b> (shows orange API KEY badge and link to get an API key)</sub>
@@ -580,9 +639,9 @@ The config page provides:
   </tr>
 </table>
 
-#### Switching Engines from the Chat (/free-search-engine)
+#### Switching Engines from the Chat (/union-search-engine)
 
-You can also switch the engine right from the chat — no need to open the settings page. Type `/free-search-engine`: a **picker opens with all engines** (the same interaction as `/model` for selecting a model). Click one to switch; the current engine is marked. Equivalent to switching and saving in the settings page, and the language follows the settings page (Chinese/English).
+You can also switch the engine right from the chat — no need to open the settings page. Type `/union-search-engine`: a **picker opens with all engines** (the same interaction as `/model` for selecting a model). Click one to switch; the current engine is marked. Equivalent to switching and saving in the settings page, and the language follows the settings page (Chinese/English).
 
 The command only changes the preferred engine; search still goes through `web_search` + the unified fallback chain — even if the preferred engine fails, it automatically switches to others, never failing outright. The system prompt refreshes accordingly.
 
@@ -612,13 +671,17 @@ Cooldowns are per-process (reloading the plugin or restarting clears them) and a
 
 #### Configuration File
 
-Since DSH 0.1.7-rc.1 the configuration is stored with the profile's plugin entry: the settings page and `/free-search-engine` both write the `config` of the `web-search-free` (`dsh-free-search`) entry in the active profile's `cordis.patch.yml`.
+Since DSH 0.1.7-rc.1 the configuration is stored with the profile's plugin entry: the settings page and `/union-search-engine` both write the `config` of the `web-search-free` (`dsh-union-search`) entry in the active profile's `cordis.patch.yml`.
 
 The old `free-search:` section of `~/.dsh/settings.yaml` is **not** imported by the DSH core (`importLegacyDocument` only maps `ui-developer-tools` / `ui-onboarding` / `shell`); the file is renamed to `settings.yaml.imported` after the other sections are imported, and the section's values stay there. The plugin detects that section in `settings.yaml.imported` (or in a still-present `settings.yaml`) at startup and seeds the recognized fields into this entry's `config` **once** (watch for `free-search: migrated N field(s)…` in the startup log). You can also migrate manually by copying the values from `settings.yaml.imported` into the plugin row config.
 
 ```yaml
 # config of that entry in profiles/<profile>/cordis.patch.yml:
 provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa / tavily / keenable / firecrawl / parallel / perplexity / serpbase / serply / deepseek-official / you / baidu / kimi / aliyun / doubao / openai / gemini / claude / auto / multi
+blockSystemSearch: false    # true = block the built-in official search: force takeover + exclude deepseek-official/search-api from every chain
+advanceFetchEnabled: true   # false = advance_fetch calls are rejected (hot)
+advanceFetchAllowPrivate: false # true = allow advance_fetch to reach loopback/private targets (LAN devices; protocol/redirect gates unchanged)
+searxngLanguage: auto       # SearXNG response language: auto = detect from query; explicit value = locked tier
 fallbackOn: [quota, auth, bot-wall, transient, invalid-response, unknown]   # failure classes allowed to trigger fallback; [] = abort on any failure (default: all)
 lang: zh                    # settings UI language (zh / en)
 bingMarket: zh-CN           # Bing market
@@ -686,6 +749,7 @@ After searching, the agent can **read full webpage content** (e.g., *"Open the f
 
 - Automatically follows redirects and decodes HTML to plain text.
 - Supports timeout and response size limits.
+- **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: this plugin registers no fetch provider and never removes the fetch tool; with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings).
 - ⚠️ Note: `web_fetch` does not have SSRF protection; the agent could theoretically access internal network addresses. Use as needed.
 
 #### Platform Search (`platform_search`)
@@ -745,8 +809,8 @@ Windows users: The desktop shortcut already includes this configuration (`set NO
 
 ### How It Works
 
-- `lib/index.js`: Host side. Implements `WebSearchProvider` (`id` / `available()` / `search()`), unified engine routing + auto-fallback (paid engines first, free as fallback); parses `timeRange` (fixed tiers / relative values / absolute dates) and forwards it to each engine; declares its editable config as volatile fields on the `web-search-free` composition entry and ships its own settings page (`plugins.row.config`); provides the `/api/dsh-free-search-settings` read/write bridge + `raw-search` debug endpoint; registers the `free_search_test`, `platform_search`, `video_search`, and `advanced_search` tools; dynamically injects the engine list into system prompts (auto-refreshes on settings change).
-- `lib/client.js`: Browser side. React configuration card (engine select, key inputs, connectivity test, and Chinese/English toggle), mounted into the official `plugins.row.config` component-row slot on the sidebar Plugins page; registers the `/free-search-engine` popup switch command (`commandUi` popupSelect, the same mechanism as `/model`).
+- `lib/index.js`: Host side. Implements `WebSearchProvider` (`id` / `available()` / `search()`), unified engine routing + auto-fallback (paid engines first, free as fallback); parses `timeRange` (fixed tiers / relative values / absolute dates) and forwards it to each engine; declares its editable config as volatile fields on the `web-search-free` composition entry and ships its own settings page (`plugins.row.config`); provides the `/api/dsh-union-search-settings` read/write bridge + `raw-search` debug endpoint; registers the `free_search_test`, `platform_search`, `video_search`, and `advanced_search` tools; dynamically injects the engine list into system prompts (auto-refreshes on settings change).
+- `lib/client.js`: Browser side. React configuration card (engine select, key inputs, connectivity test, and Chinese/English toggle), mounted into the official `plugins.row.config` component-row slot on the sidebar Plugins page; registers the `/union-search-engine` popup switch command (`commandUi` popupSelect, the same mechanism as `/model`).
 - `cordis.patch.yml`: Plugin loader configuration.
 
 ### License
@@ -757,4 +821,4 @@ MIT
 
 - 全新配置项 `safeSearch`：`off`（引擎默认，不加参数）/ `moderate` / `strict`
 - 作用于 Bing（adlt）、DuckDuckGo HTML（adlt）、DuckDuckGo Lite（adlt）
-- 默认 `off`：不额外过滤，保持引擎自身默认行为；需要时在「设置 > 插件 > Free Search」切换
+- 默认 `off`：不额外过滤，保持引擎自身默认行为；需要时在「设置 > 插件 > Union Search」切换
