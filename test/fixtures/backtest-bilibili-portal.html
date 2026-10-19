@@ -1,0 +1,56 @@
+<!-- 门户回测样张:0.10.6~0.10.10 已知 bilibili 类门户缺陷面的逻辑重构(离线确定性)。
+     覆盖:深嵌套频道树(砍半规则移除的回测对象)、轮播页码行、preload 双份图、
+     图+标题块混排链接、协议相对图链、javascript: 伪协议频道链接。 -->
+<div class="bili-header">
+  <a class="logo" href="//www.example-video.com"><img src="//i0.example-video.com/base/logo.svg" alt="站标"></a>
+  <nav class="channel">
+    <ul>
+      <li>主站
+        <ul>
+          <li>动画
+            <ul>
+              <li>MAD·AMV</li>
+              <li>MMD·3D</li>
+              <li>短片·手书·OC</li>
+              <li>特摄</li>
+            </ul>
+          </li>
+          <li>音乐
+            <ul>
+              <li>翻唱</li>
+              <li>演奏</li>
+              <li>VOCALOID·UTAU</li>
+            </ul>
+          </li>
+          <li>科技
+            <ul>
+              <li>计算机技术</li>
+              <li>手机平板</li>
+              <li>极限竞速·机械</li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li>直播
+        <ul>
+          <li>网游</li>
+          <li>生活</li>
+        </ul>
+      </li>
+      <li><a href="javascript:void(0);">会员购</a></li>
+      <li><a href="javascript:;">活动专题</a></li>
+    </ul>
+  </nav>
+</div>
+<div class="carousel">
+  <a href="https://www.example-video.com/video/av1001"><img src="//i0.example-video.com/banners/1.jpg" alt=""><span>首轮推广图</span></a>
+  <div class="pager">8 7 6 5 4 3 2 1</div>
+</div>
+<div class="rank">
+  <a href="https://www.example-video.com/video/av2001"><img src="//i1.example-video.com/cover/av2001.jpg" alt=""><br>【动画】周年纪念 MAD</a>
+  <a href="https://www.example-video.com/video/av2002"><img src="//i1.example-video.com/cover/av2002.jpg" alt=""><br>【音乐】原创曲首发</a>
+</div>
+<div class="preload-dup">
+  <img src="//i1.example-video.com/cover/av3001.jpg" alt="封面">
+  <img src="//i1.example-video.com/cover/av3001.jpg" alt="封面">
+</div>

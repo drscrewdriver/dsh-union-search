@@ -1,0 +1,29 @@
+<!-- 形态样张:文档站(侧边栏导航、面包屑、目录、代码 tabs、复制按钮、前后翻页)。
+     tabs 两种隐藏形态:inline display:none(会被剔除)与外部 CSS class(剔除不了,内容重复的
+     根因,记录为已知限制)。 -->
+<div class="layout">
+  <aside class="sidebar">
+    <ul>
+      <li><a href="/docs/start">快速开始</a></li>
+      <li><a href="/docs/hooks" class="active">Hooks</a>
+        <ul><li><a href="/docs/hooks/useState">useState</a></li><li><a href="/docs/hooks/useEffect">useEffect</a></li></ul>
+      </li>
+    </ul>
+  </aside>
+  <main>
+    <nav class="breadcrumb"><a href="/docs">文档</a> / <a href="/docs/hooks">Hooks</a> / <span>useEffect</span></nav>
+    <h1>useEffect</h1>
+    <div class="toc">
+      <ul><li><a href="#usage">用法</a></li><li><a href="#cleanup">清理</a></li></ul>
+    </div>
+    <h2 id="usage">用法</h2>
+    <div class="tabs">
+      <div class="tab-panel" data-lang="js"><pre><code>useEffect(() =&gt; {});</code></pre><button class="copy-btn">Copy</button></div>
+      <div class="tab-panel" style="display:none" data-lang="ts"><pre><code>useEffect(() =&gt; {}, [deps]);</code></pre><button class="copy-btn">Copy</button></div>
+      <div class="tab-panel hidden-tab" data-lang="py"><pre><code>py_tab_content_should_duplicate</code></pre></div>
+    </div>
+    <h2 id="cleanup">清理</h2>
+    <pre><code>return () =&gt; cancel();</code></pre>
+    <nav class="pager"><a href="/docs/hooks/useState">← useState</a> <a href="/docs/hooks/useContext">useContext →</a></nav>
+  </main>
+</div>

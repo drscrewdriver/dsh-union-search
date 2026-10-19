@@ -1,0 +1,1 @@
+[rel-proto](https://cdn.example.com/p)

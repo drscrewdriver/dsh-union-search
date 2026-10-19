@@ -1,0 +1,24 @@
+<!-- 形态样张:问答/论坛(问题、多答案、投票、引用嵌套、评论、签名档) -->
+<div class="question">
+  <h1>如何测试 HTML 转 Markdown 的转换器?</h1>
+  <div class="votes">▲ 42</div>
+  <div class="body">
+    <p>想建确定性回归,应该从哪层入手?</p>
+    <blockquote>
+      <p>有人说直接对比现成工具输出。</p>
+      <blockquote><p>但不同工具风格不同,golden 要以自家实现为准。</p></blockquote>
+    </blockquote>
+  </div>
+  <div class="comments"><span>评论1:同问</span><span>评论2:看矩阵</span></div>
+</div>
+<div class="answer">
+  <div class="votes">▲ 17</div>
+  <div class="body"><p>三层:元素级 fixture、形态级 fixture、线上冒烟。</p>
+  <pre><code>node --test test/</code></pre></div>
+  <div class="signature">-- 签名档:某用户 · 转换器爱好者</div>
+</div>
+<div class="answer">
+  <div class="votes">▲ 3</div>
+  <div class="body"><p>直接上真实站点全量比对就行。</p></div>
+</div>
+<div class="sidebar-related"><a href="/q/2">相关问题一</a><a href="/q/3">相关问题二</a></div>
