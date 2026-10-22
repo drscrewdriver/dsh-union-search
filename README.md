@@ -187,16 +187,6 @@ Error: configured web provider "ddg" is not registered
 - `fetchProvider: http` —— 官方网页抓取（web-fetch-http），手动声明时必须保留。
 - 想改用官方搜索：在插件管理器里停用本插件条目即可，不需要改配置。
 
-#### 姊妹插件：dsh-preset-workbench（预设工作台）
-
-同作者的**姊妹插件**：在设置页里可视化创建/编辑 Agent 预设——分段提示词、15 项能力开关、内置「鲸鱼娘 / 梁神模式」模板，不用手写 YAML。两者搭配：**union-search 解决"AI 联网搜索"、preset-workbench 解决"AI 人设能力编排"**，都是纯免费、开箱即用。
-
-- 仓库：<https://github.com/DDDMUC/dsh-preset-workbench>
-- 安装：`dsh plugin --profile web add github:DDDMUC/dsh-preset-workbench`
-- 用法：设置 → 预设工作台
-
-如果你觉得 preset-workbench 也有用，同样欢迎给它的仓库点个 ⭐。🙏
-
 #### 依赖说明
 
 插件对 `@deepseek-ai/dsh-settings` 和 `@deepseek-ai/dsh-tools` 使用 `peerDependencies`，这是刻意的：DSH 运行时必须使用安装树中的唯一实例。请通过 `dsh plugin --profile <profile> add ...` 安装插件，不要把 DSH 核心包复制进 profile 的本地 `node_modules`；重复副本会导致工具调度器失效。
@@ -591,16 +581,6 @@ Without that override, a disabled plugin leaves `web.searchProvider` at the ship
 - `fetchProvider: http` — the official web-fetch provider; keep it when declaring the row by hand.
 - To go back to official search: disable this plugin's entry in the plugin manager — no config edit needed.
 
-#### Sister Plugin: dsh-preset-workbench
-
-A **sister plugin** by the same author: a **visual workbench for creating/editing agent presets** right inside Settings — sectioned prompts, 15 capability toggles, and built-in "Whale Girl / Liangshen Mode" templates, no YAML needed. Pair them up: **union-search gives your AI web search, preset-workbench shapes its persona & capabilities** — both free and zero-config.
-
-- Repo: <https://github.com/DDDMUC/dsh-preset-workbench>
-- Install: `dsh plugin --profile web add github:DDDMUC/dsh-preset-workbench`
-- Usage: Settings → Preset Workbench
-
-If preset-workbench is useful to you too, a ⭐ on its repo is always welcome. 🙏
-
 #### Dependency Note
 
 This plugin intentionally specifies `@deepseek-ai/dsh-settings` and `@deepseek-ai/dsh-tools` as `peerDependencies`: the DSH runtime must use a single instance from the installation tree. Always install the plugin using `dsh plugin --profile <profile> add ...`. Do **not** copy DSH core packages into a profile-local `node_modules`, as duplicate copies can break the tool scheduler.
@@ -828,3 +808,13 @@ MIT
 - 全新配置项 `safeSearch`：`off`（引擎默认，不加参数）/ `moderate` / `strict`
 - 作用于 Bing（adlt）、DuckDuckGo HTML（adlt）、DuckDuckGo Lite（adlt）
 - 默认 `off`：不额外过滤，保持引擎自身默认行为；需要时在「设置 > 插件 > Union Search」切换
+
+---
+
+## 致谢 / Credits
+
+本插件的前身是 [dsh-free-search](https://github.com/DDDMUC/dsh-free-search)（作者 [DDDMUC](https://github.com/DDDMUC)）。当前的 `dsh-union-search` 是在其代码基础上继续演进的结果：免费引擎骨架、引擎回退链、设置页与缓存等早期设计均源自该项目，后续新增了付费引擎接入、SearXNG 多实例、advance_fetch 等能力。上游仓库中大量历史提交的作者署名保留在 git 历史里（`dddmuc@users.noreply.github.com` 等）。
+
+一并感谢曾向上游提交 PR 的贡献者：暮迟、DDDMUCe、qikairo7、Soulize、linsmc、Serply、dvcuong、mouseparker123，以及 `dingqihui7`、`repair` 等。
+
+原姊妹插件 [dsh-preset-workbench](https://github.com/DDDMUC/dsh-preset-workbench)（设置页里可视化编辑 Agent 预设，与本插件搭配使用）同样出自 DDDMUC，推荐一并安装。
