@@ -1,5 +1,7 @@
 // advance_fetch 转换管线回归套件(fixture+golden,0.10.11 起)。
 // 约定:test/fixtures/<name>.html ↔ test/golden/<name>.md 严格相等 diff。
+// 比对前两侧 EOL 归一为 LF:转换器产出恒为 LF,而 autocrlf 检出会把夹具变成 CRLF——
+// 不归一则在 Windows 工作树上整批假红(0.10.13 发布前实证:归一后 52/52 全过)。
 // 特殊模式:文件名前缀 textmode- / baseurl- 分别走 extractBySelector 的 text 模式 / 带 baseUrl 的 markdown 模式。
 // advanceFetch 级用例用本文件内的回环 http 服务(全离线确定性)。
 import { test, after } from "node:test";
@@ -20,6 +22,8 @@ function convertFixture(name, html) {
   return htmlToMarkdownGfm(html);
 }
 
+const normEol = (s) => String(s).replace(/\r\n/g, "\n");
+
 for (const f of readdirSync(FIX_DIR).filter((n) => n.endsWith(".html"))) {
   const name = f.slice(0, -".html".length);
   test(`golden: ${name}`, () => {
@@ -27,7 +31,7 @@ for (const f of readdirSync(FIX_DIR).filter((n) => n.endsWith(".html"))) {
     const expected = readFileSync(path.join(GOLD_DIR, `${name}.md`), "utf8");
     let actual;
     try { actual = convertFixture(name, html); } catch (e) { actual = `!! threw: ${e?.message ?? e}`; }
-    assert.equal(actual, expected, [
+    assert.equal(normEol(actual), normEol(expected), [
       `golden mismatch: ${name}`,
       `--- expected ---\n${JSON.stringify(expected)}`,
       `--- actual ---\n${JSON.stringify(actual)}`,
