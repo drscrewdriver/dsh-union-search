@@ -813,8 +813,26 @@ MIT
 
 ## 致谢 / Credits
 
-本插件的前身是 [dsh-free-search](https://github.com/DDDMUC/dsh-free-search)（作者 [DDDMUC](https://github.com/DDDMUC)）。当前的 `dsh-union-search` 是在其代码基础上继续演进的结果：免费引擎骨架、引擎回退链、设置页与缓存等早期设计均源自该项目，后续新增了付费引擎接入、SearXNG 多实例、advance_fetch 等能力。上游仓库中大量历史提交的作者署名保留在 git 历史里（`dddmuc@users.noreply.github.com` 等）。
+本插件的前身是 [dsh-free-search](https://github.com/DDDMUC/dsh-free-search)（作者 [DDDMUC](https://github.com/DDDMUC)）。当前的 `dsh-union-search` 是在其代码基础上继续演进的结果：免费引擎骨架、引擎回退链、设置页与缓存等早期设计均源自该项目，后续新增了付费引擎接入、SearXNG 多实例、advance_fetch 等能力。
 
-一并感谢曾向上游提交 PR 的贡献者：暮迟、DDDMUCe、qikairo7、Soulize、linsmc、Serply、dvcuong、mouseparker123，以及 `dingqihui7`、`repair` 等。
+上游的 358 个提交（v0.2.0 ~ v0.9.11，含各 PR 的合并记录）已在本仓库的 git 历史中清理，改写后的历史自根提交「chore: 历史起点」起算，`v0.9.29` 及之后的标签保留。为免署名随历史一并丢失，以下名单是清理前从 git 历史中提取的作者统计（按被清理的 358 个提交计数）：
+
+| git 署名 | 提交数 | 主要贡献 |
+| --- | --- | --- |
+| 暮迟 / 暮 / DDDMUC / DDDMUCe / mumucats | 313 | 上游主干维护（同一作者的多重署名：`dingqihui7@126.com`、`mumucats@163.com`、`DDDMUC@users.noreply.github.com`、`202493007@uibe.edu.cn`） |
+| qikairo7 / Leo | 18 | 百度 / Kimi / 阿里云中文引擎、uto 智能路由与 multi_search、research 工具与持久缓存（PR #59）、可编辑中英语言池（PR #58 pooling 半）、native web_fetch 质量链（PR #63）、引擎额度分档文档（PR #62）、设置卡改版 |
+| repair | 6 | PR #52 合并、stale schemastery 可操作报错（#55） |
+| HuanLinOTO | 4 | DSH 0.1.7-rc.1 宿主设置与插件页槽位适配（PR #41） |
+| Soulize | 4 | 全局引擎控制与 multi-search 模式选择（PR #48） |
+| 晓桀（kirito0000001） | 2 | `free_search_test` 输出 schema 补 engineUsed/note 声明（PR #65） |
+| serply（googio@serply.io） | 2 | Serply Google SERP API 付费引擎（PR #52） |
+| mouse-value-add | 2 | You.com 引擎 |
+| gefsikatsinelou | 2 | SerpBase 谷歌自然结果引擎（#33） |
+| dvchd | 2 | `/free-search-engine` 描述注册为函数，恢复 `/` 菜单 |
+| xiaozulin（traveller1974） | 1 | deepseek-tools 引擎，native `POST /v1/tools/search`（PR #79） |
+| georgeatparallel | 1 | Parallel MCP 响应体读取上限与 SSE 结果解析（PR #78） |
+| lingdianshiren | 1 | SearXNG bearer token 鉴权 |
+
+感谢以上全部作者。上游完整提交历史仍可在 [DDDMUC/dsh-free-search](https://github.com/DDDMUC/dsh-free-search) 查阅。
 
 原姊妹插件 [dsh-preset-workbench](https://github.com/DDDMUC/dsh-preset-workbench)（设置页里可视化编辑 Agent 预设，与本插件搭配使用）同样出自 DDDMUC，推荐一并安装。
