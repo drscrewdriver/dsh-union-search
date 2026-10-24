@@ -1,6 +1,6 @@
 {
   "name": "dsh-union-search",
-  "version": "0.10.15",
+  "version": "0.10.17",
   "description": "Union web search for DeepSeek Harness (renamed from dsh-free-search): free keyless engines + many professional paid search APIs — 28 engines (Bing/DuckDuckGo/AnySearch/SearXNG multi-instance union/Exa/Tavily/Keenable/Firecrawl/Parallel keyless; Zhihu global/site via MCP and Perplexity/SerpBase/Serply/DeepSeek official/You.com/Baidu/Kimi/Aliyun/Doubao/Zhipu/Bocha/Metaso with key; OpenAI/Gemini/Claude/Grok model built-in search, explicit-only) + auto smart routing + global engine enable/disable & fallback priority + multi mode (parallel top-3 merge) + multi_search cross-source tool + failure-aware fallback + block system built-in search toggle + experimental free advance_fetch (no API key, no billing; host-twin GitHub-Flavored Markdown conversion + CSS selector/fields structured extraction) + time filtering + platform search + web_fetch, with web settings UI.",
   "type": "module",
   "main": "lib/index.js",
