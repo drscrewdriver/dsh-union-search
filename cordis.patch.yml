@@ -28,16 +28,17 @@
 # then failed with `configured web provider "ddg" is not registered`. Leaving the
 # base default (`deepseek-official`) in place means a disabled plugin degrades to
 # the official provider instead of breaking search outright.
-# NOTE (0.9.27): the row `name` must be BOTH the specifier the profile resolves AND
-# the package's own manifest name. dsh-client-modules matches the row specifier
-# against the nearest package.json `name` (locatePkgJson -> nearestPackage) and
-# then uses that manifest name as the boot-graph entry id. An npm alias
-# ("dsh-union-search": "npm:@drscrewdriver/dsh-union-search@...") breaks both: the
-# browser half is filed as "not a client row" and every client surface (bundle
-# settings card, family tab, /union-search-engine) silently disappears.
+# NOTE (0.10.15 bare-name unification, supersedes the 0.9.27 scoped note): the row
+# `name` must be BOTH the specifier the profile resolves AND the package's own
+# manifest name (dsh-client-modules matches row specifier against the nearest
+# package.json `name` via locatePkgJson -> nearestPackage, then uses that manifest
+# name as the boot-graph entry id). The canonical identity is now the UNSCOPED
+# `dsh-union-search`; historic scoped installs (@drscrewdriver/dsh-union-search)
+# keep working but are unmaintained -- migrating = remove + add by bare name
+# (persisted settings keyed by the entry id reset on that swap; accepted 2026-10-24).
 - insert:
     - id: web-search-free
-      name: "@drscrewdriver/dsh-union-search"
+      name: "dsh-union-search"
       config:
         provider: bing
         disabledEngines: []

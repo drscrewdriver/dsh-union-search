@@ -136,17 +136,17 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 ### 安装
 
 ```sh
-# npm（推荐，0.9.27+）
-dsh plugin --profile web add @drscrewdriver/dsh-union-search
+# npm（推荐，0.10.15+ 统一裸名）
+dsh plugin --profile web add dsh-union-search
 
 # 或从源码/本地 tgz 安装
 git clone https://github.com/drscrewdriver/dsh-union-search.git
 dsh plugin --profile web add /path/to/dsh-union-search
 ```
 
-注意：不要用 npm 别名把 scoped 包装成裸名（例如 `"dsh-union-search": "npm:@drscrewdriver/dsh-union-search@..."`）。
+注意：包名统一为裸名 `dsh-union-search`（scoped `@drscrewdriver/dsh-union-search` 自 0.10.15 起停止维护）。
 DSH 以「bundle 行名 == 包内 `name`」判定客户端半（`dsh-client-modules`：`locatePkgJson -> nearestPackage`），
-别名会让浏览器半被判为「非客户端包」，bundle 设置卡、家族 tab、`/union-search-engine` 命令会全部静默消失（0.9.26 实测事故）。
+历史 scoped 安装升级到新版请用裸名重装（`dsh plugin remove` 后按裸名 add）；插件已持久化设置（API key/引擎开关）以条目 id 为键，改名重装会重置，需重新配置（0.10.15 维护决策，2026-10-24 确认）。
 
 然后重启：
 
@@ -529,18 +529,18 @@ Peak hours are 01:00–04:00 and 06:00–10:00 UTC Monday–Friday (excluding Ch
 ### Installation
 
 ```sh
-# npm (recommended, 0.9.27+)
-dsh plugin --profile web add @drscrewdriver/dsh-union-search
+# npm (recommended, 0.10.15+ — unified unscoped name)
+dsh plugin --profile web add dsh-union-search
 
 # or from source / a packed tgz
 git clone https://github.com/drscrewdriver/dsh-union-search.git
 dsh plugin --profile web add /path/to/dsh-union-search
 ```
 
-Note: never alias the scoped package back to the bare name (e.g. `"dsh-union-search": "npm:@drscrewdriver/dsh-union-search@..."`).
-DSH identifies a package's client half by "bundle row name == the manifest `name`" (`dsh-client-modules`: `locatePkgJson -> nearestPackage`);
-an alias files the browser half as "not a client row", so the bundle settings card, the family tab and `/union-search-engine`
-silently disappear (measured on 0.9.26).
+Note: the canonical package name is now the unscoped `dsh-union-search`; the scoped `@drscrewdriver/dsh-union-search` is unmaintained as of 0.10.15.
+DSH identifies a package's client half by "bundle row name == the manifest `name`" (`dsh-client-modules`: `locatePkgJson -> nearestPackage`),
+so upgrading from a historic scoped install means removing it and re-adding by the bare name; settings persisted under the entry id
+(API keys / engine toggles) reset on that swap and need re-configuring (maintenance decision confirmed 2026-10-24).
 
 Then restart:
 
@@ -834,5 +834,3 @@ MIT
 | lingdianshiren | 1 | SearXNG bearer token 鉴权 |
 
 感谢以上全部作者。上游完整提交历史仍可在 [DDDMUC/dsh-free-search](https://github.com/DDDMUC/dsh-free-search) 查阅。
-
-原姊妹插件 [dsh-preset-workbench](https://github.com/DDDMUC/dsh-preset-workbench)（设置页里可视化编辑 Agent 预设，与本插件搭配使用）同样出自 DDDMUC，推荐一并安装。
