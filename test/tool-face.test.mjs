@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { HELP_TOPICS } from "../lib/index.js";
+import { HELP_TOPICS, TOOL_TOPICS } from "../lib/index.js";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const src = fs.readFileSync(path.join(root, "lib", "index.js"), "utf8");
@@ -84,7 +84,8 @@ const len = (s) => [...s].length;
 
 test("常驻面：六工具说明总量在预算内", () => {
   assert.ok(tools.length >= 6, `解析到 ${tools.length} 个工具，解析可能失效`);
-  assert.ok(face <= 3000, `常驻面 ${face} 字符超预算（0.10.17 基线 4387，0.10.18 落点 2839）`);
+  // 0.10.17 基线 4387 → 0.10.18（手册化）2839 → 0.10.19（三分类）2181
+  assert.ok(face <= 2300, `常驻面 ${face} 字符超预算（本轮落点 2181）`);
 });
 
 test("常驻面：无单条描述超 700 字符", () => {
@@ -103,20 +104,41 @@ test("常驻面：说明不平铺 help 语料的长规则", () => {
   }
 });
 
-test("union_help：已注册且主题在短描述里可发现", () => {
-  const help = tools.find((t) => t.name === "union_help");
-  assert.ok(help, "union_help 未注册");
-  for (const topic of Object.keys(HELP_TOPICS)) {
-    assert.ok(help.description.includes(topic), `union_help description 未列出主题 ${topic}`);
+test("手册：已注册且描述点名所覆盖的工具，且只写自家工具", () => {
+  const manual = tools.find((t) => t.name === "search_fetch_tool_manual");
+  assert.ok(manual, "search_fetch_tool_manual 未注册");
+  // 范围锚定：本手册只说 advanced_search 与 advance_fetch，不得自己扩大到其余工具
+  assert.deepEqual(Object.keys(TOOL_TOPICS).sort(), ["advance_fetch", "advanced_search"]);
+  for (const out of ["platform_search", "video_search", "multi_search"]) {
+    assert.ok(!manual.description.includes(out), `手册描述越范围点名了 ${out}`);
   }
-  for (const dyn of ["engines", "platforms", "list"]) {
-    assert.ok(help.description.includes(dyn), `union_help description 未列出运行时主题 ${dyn}`);
+  for (const tool of Object.keys(TOOL_TOPICS)) {
+    assert.ok(manual.description.includes(tool), `手册描述未点名 ${tool}`);
+    assert.ok(
+      tools.some((t) => t.name === tool),
+      `TOOL_TOPICS 记录了本插件未注册的工具 ${tool}（手册不得写别家）`,
+    );
   }
 });
 
-test("union_help：语料非空壳", () => {
-  const keys = Object.keys(HELP_TOPICS);
-  assert.deepEqual(keys.sort(), ["fetch-types", "fields-syntax", "identity", "troubleshooting"]);
+test("手册：主题均可由工具名入口达到，无孤儿主题", () => {
+  const covered = new Set(Object.values(TOOL_TOPICS).flat());
+  for (const k of Object.keys(HELP_TOPICS)) {
+    assert.ok(covered.has(k), `主题 ${k} 未被任何工具名入口覆盖`);
+  }
+});
+
+test("手册与描述：不得夹带其他插件或外部工具的名字", () => {
+  const foreign = ["browser-cdp", "bcdp_", "stagehand", "playwright", "puppeteer"];
+  const corpus = [...Object.values(HELP_TOPICS), ...tools.map((t) => t.description)].join("\n");
+  for (const f of foreign) {
+    assert.ok(!corpus.includes(f), `模型面出现其他工具的名字 ${f}`);
+  }
+});
+
+test("手册：语料非空壳且主题集与范围一致", () => {
+  const keys = Object.keys(HELP_TOPICS).sort();
+  assert.deepEqual(keys, ["fetch-types", "fields-syntax", "identity", "time-filters", "troubleshooting"]);
   for (const k of keys) {
     assert.ok(len(HELP_TOPICS[k]) >= 200, `${k} 语料仅 ${len(HELP_TOPICS[k])} 字符`);
   }
