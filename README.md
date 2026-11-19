@@ -160,7 +160,7 @@ dsh web
 
 插件加载后**自动接管搜索**（运行时接管，不改配置层）：
 
-- `web.searchProvider` 未设置，或仍是 DSH 出厂默认的官方搜索时，自动切换为本插件的 provider（id 固定为 `ddg`）；出厂默认在 0.2.1-rc.2 起有两个 id——`deepseek-official`（Messages 服务端 web_search）与 `deepseek-search-api`（新内置的 Search/Fetch 独立 API），两者都会被识别并接管；
+- `web.searchProvider` 未设置，或仍是 DSH 出厂默认的官方搜索时，自动切换为本插件的 provider（id 固定为 `ddg`）；出厂默认在 0.2.1-rc.2 起有两个 id——`deepseek-official`（Messages 服务端 web_search）与 `deepseek-search-api`（新内置的 Search/Fetch 独立 API），两者都会被识别并接管；**0.2.2-rc.5 起宿主不再把默认写进配置**，而是按模型路由自选（见下方 rc.5 说明），所以"未设置"成为常态，本插件照旧接管；
 - 如果（你或别的插件）已显式选择其他 provider，本插件不抢占，只在启动日志输出 WARN 与切换用的 YAML；
 - 设置页开启「屏蔽系统自带搜索」（`blockSystemSearch: true`）后，无论 `web.searchProvider` 指向谁，都强制接管为本插件 provider，且 `deepseek-official` 引擎被从所有引擎链中剔除；保存即生效，无需重启。
 
@@ -172,7 +172,11 @@ Error: configured web provider "ddg" is not registered
 
 现在没有这层覆盖：插件被停用时 `web.searchProvider` 保持官方默认（`deepseek-official`），搜索至少还能走官方通道；插件启用时由上面的运行时接管切到 `ddg`。
 
-> **0.2.1-rc.2 机制变化**：宿主删掉了可写的运行时选择字段，改为每次调用读 `web` 条配置的 volatile 值（未配置且多个可用 provider 时报 `WEB_PROVIDER_AMBIGUOUS`）。本插件能力探测分流：≤rc.1 仍走内存接管（非持久）；rc.2+ 经 settings 服务把 `web.searchProvider: ddg` 钉进条配置（**持久**）——若后续停用本插件，记得删掉该字段（或拨回官方开关），否则宿主会响亮报 `CONFIGURED_MISSING`；`blockSystemSearch` 开启时同步把 `fetchProvider` 钉回 `http`（web_fetch 保留，钳离按次计费的 `deepseek-fetch-api`）。
+> **0.2.1-rc.2 机制变化**：宿主删掉了可写的运行时选择字段，改为每次调用读 `web` 条配置的 volatile 值（未配置且多个可用 provider 时报 `WEB_PROVIDER_AMBIGUOUS`）。本插件能力探测分流：≤rc.1 仍走内存接管（非持久）；rc.2+ 经 settings 服务把 `web.searchProvider: ddg` 钉进条配置（**持久**）——若后续停用本插件，记得删掉该字段（或拨回官方开关），否则宿主会响亮报 `CONFIGURED_MISSING`；`blockSystemSearch` 开启时同步把 `fetchProvider` 钉回 `http`（web_fetch 保留，钳离按次计费的 `deepseek-fetch-api`；你若显式指定了第三方 fetch provider，则不动它）。
+
+> **0.2.2-rc.5 机制变化（重要，失败形态变了）**：宿主把 `- id: web` 里写死的 `searchProvider: deepseek-search-api` **删掉了**，只留 `fetchProvider: http`，改成"未配置就按模型请求的路由自选"——`deepseek-official` / `deepseek-account` 两条路由选 `deepseek-official`（服务端 Messages 搜索，不按次计费），其余路由和无模型请求选 `deepseek-search-api`。
+> 对本插件的三个后果：①接管判据不受影响（未设置 → 仍是本插件的接管分支，`ddg` 两种出厂 id 仍在白名单内）；②**钉选变得更要紧**——一旦 `settings.mutate` 没落地（settings 服务尚未挂载时本插件会延迟重试），`web_search` 不再报 `WEB_PROVIDER_AMBIGUOUS`，而是**静默**走官方通道，看起来像"插件没生效"却没有任何错误；③设置页的搜索 provider 菜单多出一个「自动」项（`AUTO_ID` 空串），选中它会 `resetField` 清掉 `searchProvider` 覆盖，于是本插件的钉选被解除、搜索回到官方通道——这不是 bug，是官方新语义，但要知道点了什么。
+> 自查：日志里出现 `union-search: pinned web entry config searchProvider=ddg` 才算接管成功；只有出现 `settings service not ready` / `could not pin` 才是没落地。
 
 > 如果你曾按旧文档手动在 `profiles/<profile>/cordis.patch.yml` 里加过下面这段，而插件没有启用，就会看到上面那条错误——**删掉这段即可**（或重新启用插件）：
 
@@ -343,7 +347,7 @@ deepseekApiKey: ...
 
 - 自动跟随重定向、解码正文（HTML 转文本）
 - 支持超时和大小限制
-- **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：本插件不注册 fetch provider、不夺抓取工具；`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单）
+- **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：本插件不注册 fetch provider、不夺抓取工具；`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单；显式指定的第三方 fetch provider 不动）
 - ⚠️ 注意：`web_fetch` 无 SSRF 防护，agent 理论上可访问内网地址——按需使用
 
 #### 平台搜索（platform_search）
@@ -556,7 +560,7 @@ dsh web
 
 The plugin **takes over search at runtime** once loaded (it does not touch the config layer):
 
-- When `web.searchProvider` is unset, or still a shipped default official provider, it switches to this plugin's provider (id: `ddg`); since 0.2.1-rc.2 there are two shipped ids — `deepseek-official` (Messages server-side web_search) and `deepseek-search-api` (the new built-in Search/Fetch standalone API) — and both are recognized and taken over;
+- When `web.searchProvider` is unset, or still a shipped default official provider, it switches to this plugin's provider (id: `ddg`); since 0.2.1-rc.2 there are two shipped ids — `deepseek-official` (Messages server-side web_search) and `deepseek-search-api` (the new built-in Search/Fetch standalone API) — and both are recognized and taken over; **since 0.2.2-rc.5 the host no longer writes a default into the config** but selects by model route (see the rc.5 note below), so "unset" is the normal state and the takeover still applies;
 - If you (or another plugin) explicitly selected a different provider, it does not steal it — it only logs a WARN with a copy-pasteable YAML snippet;
 - With the "Block built-in system search" toggle on (`blockSystemSearch: true`), it force-takes-over `web.searchProvider` no matter what it points to, and the `deepseek-official` engine is excluded from every engine chain; takes effect on save, no restart needed.
 
@@ -568,7 +572,11 @@ Error: configured web provider "ddg" is not registered
 
 Without that override, a disabled plugin leaves `web.searchProvider` at the shipped default (`deepseek-official`) so search still works through the official provider; when the plugin is enabled the runtime takeover above points it at `ddg`.
 
-> **0.2.1-rc.2 mechanism change**: the host removed the writable runtime selection field and now reads the volatile `web` entry config on every call (unset + multiple usable providers → `WEB_PROVIDER_AMBIGUOUS`). This plugin probes the capability: ≤rc.1 keeps the in-memory takeover (non-persistent); on rc.2+ it pins `web.searchProvider: ddg` into the entry config through the settings service (**persistent**) — if you later disable this plugin, remove that field (or flip the official switch back), otherwise the host fails loudly with `CONFIGURED_MISSING`. With `blockSystemSearch` on, `fetchProvider` is also clamped to `http` (web_fetch is kept; the metered `deepseek-fetch-api` is not).
+> **0.2.1-rc.2 mechanism change**: the host removed the writable runtime selection field and now reads the volatile `web` entry config on every call (unset + multiple usable providers → `WEB_PROVIDER_AMBIGUOUS`). This plugin probes the capability: ≤rc.1 keeps the in-memory takeover (non-persistent); on rc.2+ it pins `web.searchProvider: ddg` into the entry config through the settings service (**persistent**) — if you later disable this plugin, remove that field (or flip the official switch back), otherwise the host fails loudly with `CONFIGURED_MISSING`. With `blockSystemSearch` on, `fetchProvider` is also clamped to `http` (web_fetch is kept; the metered `deepseek-fetch-api` is not). If you explicitly picked a third-party fetch provider, it is left alone.
+
+> **0.2.2-rc.5 mechanism change (important — the failure mode changed)**: the host **deleted** the hard-coded `searchProvider: deepseek-search-api` from `- id: web`, keeping only `fetchProvider: http`, and now selects per model-request route when nothing is configured — `deepseek-official` / `deepseek-account` routes get `deepseek-official` (server-side Messages search, not billed per search), every other route and requests outside a model turn get `deepseek-search-api`.
+> Three consequences for this plugin: ① the takeover criterion is unaffected (unset → still this plugin's takeover branch, and both shipped ids stay in the whitelist); ② **the pin matters more than before** — if `settings.mutate` never lands (this plugin defers and retries when the settings service is not mounted yet), `web_search` no longer raises `WEB_PROVIDER_AMBIGUOUS`; it **silently** goes to the official provider, so it looks like "the plugin did nothing" with no error at all; ③ the search-provider menu on the settings page gained an "Automatic" entry (empty id), and picking it calls `resetField`, clearing the `searchProvider` override — i.e. it releases this plugin's pin and search returns to the official provider. That is official behaviour, not a bug, but be aware of what the click does.
+> Self-check: takeover only succeeded when the log shows `union-search: pinned web entry config searchProvider=ddg`; seeing `settings service not ready` / `could not pin` means it did not land.
 
 > If you previously added the snippet below by hand to `profiles/<profile>/cordis.patch.yml` *and* the plugin is not enabled, you will see that error — **just remove the snippet** (or re-enable the plugin):
 
@@ -739,7 +747,7 @@ After searching, the agent can **read full webpage content** (e.g., *"Open the f
 
 - Automatically follows redirects and decodes HTML to plain text.
 - Supports timeout and response size limits.
-- **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: this plugin registers no fetch provider and never removes the fetch tool; with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings).
+- **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: this plugin registers no fetch provider and never removes the fetch tool; with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings); a third-party fetch provider you picked explicitly is left alone.
 - ⚠️ Note: `web_fetch` does not have SSRF protection; the agent could theoretically access internal network addresses. Use as needed.
 
 #### Platform Search (`platform_search`)
