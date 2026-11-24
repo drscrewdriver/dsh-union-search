@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 (2026-11-24)
+
+- feat(guide): 首次使用引导（3 步）——web 设置 UI 顶部三步教学：免费引擎与付费 key 的关系、auto 智能路由与「全局回退优先级」（失败-aware 回退链）、`multi_search` 多源交叉核对。卡片底部恒定「重新查看引导」入口。
+- feat(guide): 引导外壳自带十语（zh·en·ja·ko·fr·de·it·ru·es·pt），认不出的语言落 en；步骤正文 zh/en，其余语种回退 en 不留空白。Skip 恒在每一步；Skip 与「开始使用」都写 `dsh.guide.union-search.skipped`。卡片自带 zh/EN 开关时引导跟随该开关，`<html lang>` 只作 fallback。
+- 为什么内联而不是共享副本：本仓**没有 src/、没有构建步骤**，`lib/client.js` 就是手维护的源（`window.__ModuleLoader__.load` 工厂）。引导按该文件既有 var/function + 中文注释风格内联在 `//#region guide` 区块；与真源的差异仅在无 TS 类型、无 GUIDE_LOCALES 导出、CSS 用固定色值 + dark media query。
+- 该文件行尾归位 LF（HEAD 本是 LF），本次 diff 为纯增量、无既有行被改。
+- 全量：92 tests / 92 pass。
+
 ## 0.10.25
 
 - **适配 DSH 0.2.2-rc.5 的搜索缝语义变更**：宿主删除了 `- id: web` 里写死的
