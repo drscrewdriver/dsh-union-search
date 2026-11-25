@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.5 (2026-11-26)
+
+- **ALPN http/1.1 抓取通道**（平行移植上游 #162 / ec6c1bd，主题线 `0.11.5-rc.1`）：
+  部分站点/中间盒会 RST 不带 ALPN 扩展的 TLS 握手（浏览器能开、插件报 socket hang up），
+  而 undici fetch 无法声明 ALPNProtocols。新增自建 fetch-like 基元（node:https +
+  ALPN ["http/1.1"] + keepAlive）：零新依赖，解压 gzip/deflate(含 raw)/br，字符解码复用
+  decodeResponseBody（GBK 老站矩阵不回退）；不自动跟重定向。
+  - `fetchHtml`（bing/ddg  scraping 主路）与 `fetchVideoHtml` 切基元，重定向由 httpsFetchText
+    内部跟 ≤5 跳；超时/abort 透传/反爬 202 判定三条既有行为不变。
+  - `advanceFetch` 环内换 httpsLikeFetch（不跟 redirect），逐跳 SSRF 复检与 cookie 域匹配语义原样保留。
+  - `mcp_adapter.httpsPost` 补 ALPN agent（知乎/Exa MCP 端点同治）。
+  - 付费引擎 REST 端点（api.exa.ai 等 42 处）不动：正常 API 域名无此握手问题，最小变更。
+  - 新增 `test/alpn.test.mjs` 6 用例（agent 配置/gzip/raw-deflate/重定向链+限跳/非 2xx 透传/abort），
+    全量 119/119 pass；真机 ALPN 握手差异靠 t12 冒烟覆盖。
+
 ## 0.11.4 (2026-11-26)
 
 - **一键升级不再盲信 pnpm 的 exit code**（平行移植上游 #163 / 0b2084e，主题线 `0.11.4-rc.1`）：
