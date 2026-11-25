@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.6 (2026-11-26)
+
+- **接管悬空引用随包自愈**（平行移植上游 #159 / 767b5a4 概念，主题线 `0.11.6-rc.1`）：
+  新增 `bin/restore.js`（零依赖单文件，卸载/停用后仍可从任意位置 node 直跑）：扫描
+  `profiles/*/cordis.patch.yml`，逐行状态机定位 `- id: web` 条目 config 块，只删本插件钉选的
+  `searchProvider: ddg` 行（含引号/尾注释形态）；`fetchProvider` 指向宿主内建档默认保留，
+  仅 `--include-fetch` 时一并清；`--dry` 默认、`--apply` 落盘，CRLF/LF 行尾风格保持。
+  非 web 条目、同条目其他字段、宿主出厂值/第三方 provider 零误伤（用例覆盖）。
+- `package.json`：`files` 追加 `bin/restore.js`，新增 `bin` 映射 `dsh-union-search-restore`；
+  takeover 代码注释与 README（zh/en）的「手动删字段」指引改指 restore 命令。
+- 发布通道：本仓 release.yml 已加 rc 感知（-rc 版本 CI 自动 `--tag rc` + `--prerelease` Release，
+  不动 latest/线标签），`v0.11.6-rc.1` 经此通道发布。
+- 新增 `test/restore.test.mjs` 5 用例组，全量 124/124 pass。
+- 至此平行 bug 修补批（0.11.2~0.11.6）全部闭合：出口卫生 / 相关性守卫 / 升级核实 / ALPN 通道 / 悬空自愈。
+
 ## 0.11.5 (2026-11-26)
 
 - **ALPN http/1.1 抓取通道**（平行移植上游 #162 / ec6c1bd，主题线 `0.11.5-rc.1`）：
