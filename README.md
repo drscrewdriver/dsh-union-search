@@ -276,6 +276,8 @@ provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa 
 blockSystemSearch: false    # true = 屏蔽系统自带搜索：强制接管并把 deepseek-official/search-api 移出引擎链
 advanceFetchEnabled: true   # false = 拒绝 advance_fetch 调用（热生效）
 fetchTakeover: false        # true = 注册并钉选 web.fetchProvider = union-search，接管宿主 web_fetch 出口（需宿主 ≥0.2.1-rc.2）
+browserFetchTier: false     # true = 登录墙/反爬/JS 空壳页命中时借 dsh-browser-cdp（≥1.15.0）的已登录浏览器重抓（带 cookie，默认关）
+browserFetchAllowHosts: ""  # 升级档域名白名单（逗号分隔后缀，含子域）；空 = 不限制（仍受总开关）
 advanceFetchAllowPrivate: false # true = 放行 advance_fetch 访问回环/内网（局域网设备场景；协议/重定向门不变）
 advanceFetchUserAgent: ""   # 空 = 内置默认 UA；可自定义用于按 UA 拦截的站
 advanceFetchReferer: ""     # 空 = 不发 Referer；可配防盗链图床/接口解锁
@@ -350,6 +352,7 @@ deepseekApiKey: ...
 - 支持超时和大小限制
 - **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单；显式指定的第三方 fetch provider 不动）
 - **fetch provider 接管（0.12.0，需宿主 ≥0.2.1-rc.2）**：设置面开启 `fetchTakeover` 后，本插件注册并钉选 `web.fetchProvider: union-search`，`web_fetch` 改走本插件抓取栈——ALPN 直连 + 宿主同款 Markdown 优化器，正文在插件侧完成转换（kind:text），不再受宿主「先截断后转换」影响（大页只剩标题的 #161 形态）；SSRF 地址门/charset 解码/重定向限次同样生效。关闭后自动回落免费 `http`；卸载/停用后的残留钉选可用 `node node_modules/dsh-union-search/bin/restore.js --apply` 清理
+- **浏览器升级档（0.13.0，需同会话安装 dsh-browser-cdp ≥1.15.0）**：`fetchTakeover` 开启后，若直连结果命中登录墙（HTTP 401/403）/反爬挑战/JS 空壳页特征，经 cordis 服务总线调用 browser-cdp 的 `browser-fetch` 服务在**已登录的 agent 浏览器**里开后台 tab 重抓渲染后 DOM，再进同一套优化器出成品 markdown，结果尾部标注「fetched via user browser (session cookies included)」。⚠️ 总开关 `browserFetchTier` 默认关：带 cookie 访问由搜索结果（不可信文本）驱动的 URL 是身份泄漏面，建议配合 `browserFetchAllowHosts` 只钉登录墙域名；browser-cdp 不在位或服务报错时静默降级回直连形态
 - ⚠️ 注意：`web_fetch` 无 SSRF 防护，agent 理论上可访问内网地址——按需使用
 
 #### 平台搜索（platform_search）
@@ -678,6 +681,8 @@ provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa 
 blockSystemSearch: false    # true = block the built-in official search: force takeover + exclude deepseek-official/search-api from every chain
 advanceFetchEnabled: true   # false = advance_fetch calls are rejected (hot)
 fetchTakeover: false        # true = register & pin web.fetchProvider = union-search (host >= 0.2.1-rc.2)
+browserFetchTier: false     # true = re-fetch login-walled / anti-bot / JS-shell pages through dsh-browser-cdp's logged-in browser (>= 1.15.0); off by default
+browserFetchAllowHosts: ""  # browser-tier domain allowlist (comma-separated suffixes, subdomains included); empty = unrestricted (master switch still gates it)
 advanceFetchAllowPrivate: false # true = allow advance_fetch to reach loopback/private targets (LAN devices; protocol/redirect gates unchanged)
 advanceFetchUserAgent: ""   # empty = built-in UA; customize for sites that block by User-Agent
 advanceFetchReferer: ""     # empty = no Referer; useful for hotlink-protected image hosts/APIs
@@ -752,6 +757,7 @@ After searching, the agent can **read full webpage content** (e.g., *"Open the f
 - Supports timeout and response size limits.
 - **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings); a third-party fetch provider you picked explicitly is left alone.
 - **Fetch-provider takeover (0.12.0, host >= 0.2.1-rc.2)**: turning on `fetchTakeover` registers and pins `web.fetchProvider: union-search`, routing `web_fetch` through this plugin's retrieval stack — ALPN direct fetch plus the host-twin Markdown optimizer, conversion finished plugin-side (kind:text) so the host's truncate-before-convert pipeline (the "big page collapses to just a title" shape, upstream #161) can no longer mangle it; the SSRF address gate, charset decoding and redirect caps apply as well. Turning it off falls back to the free `http` provider; a leftover pin after uninstall/disable is cleaned by `node node_modules/dsh-union-search/bin/restore.js --apply`.
+- **Browser upgrade tier (0.13.0, needs dsh-browser-cdp >= 1.15.0 in the same session)**: when `fetchTakeover` is on and a direct fetch hits a login wall (HTTP 401/403), an anti-bot challenge or a JS-rendered shell, the plugin calls browser-cdp's `browser-fetch` service over the cordis bus and re-fetches the rendered DOM from a background tab of the **logged-in agent browser**, then runs it through the same optimizer; results carry a "fetched via user browser (session cookies included)" note. ⚠️ `browserFetchTier` is off by default — fetching injection-driven URLs with your cookies is an identity-leak surface, so pair it with `browserFetchAllowHosts` (pin only the login-walled domains). Missing service or any browser-side error silently falls back to the direct-fetch shape.
 - ⚠️ Note: `web_fetch` does not have SSRF protection; the agent could theoretically access internal network addresses. Use as needed.
 
 #### Platform Search (`platform_search`)
