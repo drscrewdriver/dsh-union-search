@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.4 (2026-11-26)
+
+- **一键升级不再盲信 pnpm 的 exit code**（平行移植上游 #163 / 0b2084e，主题线 `0.11.4-rc.1`）：
+  `updatePlugin()` 成功后新增 `verifyInstalledVersion(profileDir)` 核实——读 profile 实装的
+  `node_modules/dsh-union-search/package.json`（含 Windows BOM 剥除）与 npm latest 比对：
+  - 一致 → 成功文案改为报具体版本号（`upgraded to v<installed>`，不再悬空 "latest"）；
+  - 不一致 → `upgrade-stale`，报「请求 vX、实装 vY」并提示 minimumReleaseAge 冷却/读侧滞后成因；
+  - 读不到 → `upgrade-unknown`，不再虚报成功。pnpm 11 默认冷却期静默装回旧版、界面仍提示
+    「升级完成」的形态就此关闭；两个新 code 经既有错误行样式透传 message，客户端零改动。
+  - 新增 `test/upgrade.test.mjs` 3 用例组（正常/BOM/四种坏态），全量 113/113 pass。
+
 ## 0.11.3 (2026-11-26)
 
 - **相关性守卫升级**（平行移植上游 5001357 + d019d04 终版判据，主题线 `0.11.3-rc.1`/`rc.2`）：
