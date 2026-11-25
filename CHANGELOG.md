@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.13.0 (2026-11-26)
+
+- **fetch provider 浏览器升级档**（主题线 `0.13.0-rc.1`/`rc.2`，跨仓配套 dsh-browser-cdp 1.15.0）：
+  - provider 直连结果命中登录墙（HTTP 401/403）/反爬挑战/JS 空壳页特征时，经 cordis 服务总线
+    `ctx.get("browser-fetch")` 调 browser-cdp 新服务在已登录 agent 浏览器开后台 tab 重抓渲染 DOM，
+    再过同一套抽取/优化器链出 kind:text 成品，尾部附「fetched via user browser (session cookies
+    included)」声明；browser-cdp 不在位/服务错误/allowlist 未命中一律静默降级直连形态，不重试。
+  - 新配置（均 volatile 热生效）：`browserFetchTier` 默认 **false**（带 cookie 访问注入驱动 URL 是
+    身份泄漏面，永不默认开）；`browserFetchAllowHosts` 逗号分隔域名后缀白名单（含子域，空=不限）。
+  - 新判据纯函数 `hostInAllowlist` / `browserUpgradeNeeded`（导出+单测）；关闭态与 0.12.0 行为完全一致。
+  - 设置面双语开关行 + 白名单输入框（输入框随总开关禁用）；README zh/en 浏览器升级档分节。
+  - 新增 `test/browser-tier.test.mjs` 6 用例；全量 135/135 pass。装机双开联调（cdp 1.15.0 + 本 0.13.0）
+    留待 profile 验证轮。
+
 ## 0.12.0 (2026-11-26)
 
 - **fetch provider 注册（直连档）**（主题线 `0.12.0-rc.1`/`rc.2`，格式优化器依定案留在本仓出口）：
