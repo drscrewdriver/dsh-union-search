@@ -1,8 +1,9 @@
-// 相关性守卫判据（0.11.3-rc.1，移植上游 5001357 + d019d04 终版三条件）。
-// 消费面：searchBing 既有接线 + rc.2 将接的 ddg/searxng 出口。本文件只测纯函数判据。
+// 相关性守卫判据（0.11.3-rc.1 起，移植上游 5001357 + d019d04 终版三条件）。
+// 消费面：searchBing 既有接线 + searchDdgHtml/searchDdgLite/searchSearxng 出口（rc.2 接线）。
+// 引擎函数本体需网络，此处测判据与 guardRelevance 出口语义。
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { looksRelevant, queryOverlapTokens } from "../lib/index.js";
+import { looksRelevant, queryOverlapTokens, guardRelevance } from "../lib/index.js";
 
 test("tokens: 中文单字不再入判据，二元组保留", () => {
   const t = queryOverlapTokens("系统");
@@ -55,4 +56,27 @@ test("命中源占比：6 条里仅 1 条命中 → 不足 1/3 判无关", () =>
 test("纯数字查询：标题含数字才放行", () => {
   assert.equal(looksRelevant("2026", [{ title: "2026 年展望", snippet: "正文", url: "u" }]), true);
   assert.equal(looksRelevant("2026", [{ title: "年展望", snippet: "正文", url: "u" }]), false);
+});
+
+test("guardRelevance: 无关批次洗空且清掉 content 残留", () => {
+  const dirty = {
+    sources: [
+      { title: "每日热点快讯", snippet: "导航里提到 DeepSeek 标签", url: "https://n.example/1" },
+      { title: "财经早报", snippet: "推理成本四个字", url: "https://n.example/2" },
+      { title: "体育早报", snippet: "无关", url: "https://n.example/3" },
+    ],
+    truncated: false,
+    content: "聚合提示文本",
+  };
+  const out = guardRelevance("DeepSeek 推理成本", dirty);
+  assert.deepEqual(out.sources, []);
+  assert.equal(out.truncated, false);
+  assert.equal(out.content, undefined, "洗空后不得残留聚合文案");
+});
+
+test("guardRelevance: 相关批次与空结果原样透传", () => {
+  const good = { sources: [{ title: "DeepSeek 推理成本分析", snippet: "分析推理成本", url: "https://a.example" }], truncated: false };
+  assert.equal(guardRelevance("DeepSeek 推理成本", good), good);
+  const empty = { sources: [], truncated: false };
+  assert.equal(guardRelevance("anything", empty), empty);
 });
