@@ -275,6 +275,7 @@ DSH 0.1.7-rc.1 起，配置跟随 profile 的插件条目保存：设置页与 `
 provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa / tavily / keenable / firecrawl / parallel / perplexity / serpbase / serply / deepseek-official / you / baidu / kimi / aliyun / doubao / openai / gemini / claude / auto / multi
 blockSystemSearch: false    # true = 屏蔽系统自带搜索：强制接管并把 deepseek-official/search-api 移出引擎链
 advanceFetchEnabled: true   # false = 拒绝 advance_fetch 调用（热生效）
+fetchTakeover: false        # true = 注册并钉选 web.fetchProvider = union-search，接管宿主 web_fetch 出口（需宿主 ≥0.2.1-rc.2）
 advanceFetchAllowPrivate: false # true = 放行 advance_fetch 访问回环/内网（局域网设备场景；协议/重定向门不变）
 advanceFetchUserAgent: ""   # 空 = 内置默认 UA；可自定义用于按 UA 拦截的站
 advanceFetchReferer: ""     # 空 = 不发 Referer；可配防盗链图床/接口解锁
@@ -347,7 +348,8 @@ deepseekApiKey: ...
 
 - 自动跟随重定向、解码正文（HTML 转文本）
 - 支持超时和大小限制
-- **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：本插件不注册 fetch provider、不夺抓取工具；`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单；显式指定的第三方 fetch provider 不动）
+- **0.2.1-rc.2+ 宿主新增内置 `deepseek-fetch-api` 选项（Fetch $0.75/千次，2026-11-01 起按次计费）**：`blockSystemSearch` 开启时会把 `web.fetchProvider` 钳制回免费的 `http`（保留抓取、不产生抓取账单；显式指定的第三方 fetch provider 不动）
+- **fetch provider 接管（0.12.0，需宿主 ≥0.2.1-rc.2）**：设置面开启 `fetchTakeover` 后，本插件注册并钉选 `web.fetchProvider: union-search`，`web_fetch` 改走本插件抓取栈——ALPN 直连 + 宿主同款 Markdown 优化器，正文在插件侧完成转换（kind:text），不再受宿主「先截断后转换」影响（大页只剩标题的 #161 形态）；SSRF 地址门/charset 解码/重定向限次同样生效。关闭后自动回落免费 `http`；卸载/停用后的残留钉选可用 `node node_modules/dsh-union-search/bin/restore.js --apply` 清理
 - ⚠️ 注意：`web_fetch` 无 SSRF 防护，agent 理论上可访问内网地址——按需使用
 
 #### 平台搜索（platform_search）
@@ -675,6 +677,7 @@ The old `free-search:` section of `~/.dsh/settings.yaml` is **not** imported by 
 provider: bing              # ddg / ddg-lite / bing / searxng / anysearch / exa / tavily / keenable / firecrawl / parallel / perplexity / serpbase / serply / deepseek-official / you / baidu / kimi / aliyun / doubao / openai / gemini / claude / auto / multi
 blockSystemSearch: false    # true = block the built-in official search: force takeover + exclude deepseek-official/search-api from every chain
 advanceFetchEnabled: true   # false = advance_fetch calls are rejected (hot)
+fetchTakeover: false        # true = register & pin web.fetchProvider = union-search (host >= 0.2.1-rc.2)
 advanceFetchAllowPrivate: false # true = allow advance_fetch to reach loopback/private targets (LAN devices; protocol/redirect gates unchanged)
 advanceFetchUserAgent: ""   # empty = built-in UA; customize for sites that block by User-Agent
 advanceFetchReferer: ""     # empty = no Referer; useful for hotlink-protected image hosts/APIs
@@ -747,7 +750,8 @@ After searching, the agent can **read full webpage content** (e.g., *"Open the f
 
 - Automatically follows redirects and decodes HTML to plain text.
 - Supports timeout and response size limits.
-- **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: this plugin registers no fetch provider and never removes the fetch tool; with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings); a third-party fetch provider you picked explicitly is left alone.
+- **0.2.1-rc.2+ ships a built-in `deepseek-fetch-api` option (Fetch $0.75 per 1,000 requests, metered from 2026-11-01)**: with `blockSystemSearch` on it clamps `web.fetchProvider` back to the free `http` provider (fetch kept, no fetch billings); a third-party fetch provider you picked explicitly is left alone.
+- **Fetch-provider takeover (0.12.0, host >= 0.2.1-rc.2)**: turning on `fetchTakeover` registers and pins `web.fetchProvider: union-search`, routing `web_fetch` through this plugin's retrieval stack — ALPN direct fetch plus the host-twin Markdown optimizer, conversion finished plugin-side (kind:text) so the host's truncate-before-convert pipeline (the "big page collapses to just a title" shape, upstream #161) can no longer mangle it; the SSRF address gate, charset decoding and redirect caps apply as well. Turning it off falls back to the free `http` provider; a leftover pin after uninstall/disable is cleaned by `node node_modules/dsh-union-search/bin/restore.js --apply`.
 - ⚠️ Note: `web_fetch` does not have SSRF protection; the agent could theoretically access internal network addresses. Use as needed.
 
 #### Platform Search (`platform_search`)

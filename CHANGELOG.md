@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.12.0 (2026-11-26)
+
+- **fetch provider 注册（直连档）**（主题线 `0.12.0-rc.1`/`rc.2`，格式优化器依定案留在本仓出口）：
+  - rc.1：`ctx.web.registerFetchProvider` 注册 provider id `union-search`，内部复用 advanceFetch
+    全栈（SSRF 门→ALPN 直连→charset→宿主同款优化器），返回 `kind:'text'` 成品 markdown—
+    —抢在宿主「先 2e5 截断再 HTML→MD」之前完成转换，结构性免疫上游 #161 的坑；advanceFetch
+    结果新增 `statusCode` 透传（重定向终点态）；旧宿主无此缝时能力探测跳过不崩。
+  - rc.2：新增 `fetchTakeover` 配置（默认关，热生效）：开 → 钉 `web.fetchProvider: union-search`；
+    仅 blockSystemSearch → 钳 http（原语义）；关且残留 union-search 钉选 → 回落 http。用户显式
+    选的第三方 fetch provider 永不越权覆盖；`available()` 受开关控制，关闭态完全不参与宿主选择
+    （不引入 AMBIGUOUS，零行为变化）。设置面双语开关行；bin/restore.js 无条件清
+    `fetchProvider: union-search` 悬空残留（第三方值仍只在 --include-fetch 动）。
+  - README（zh/en）web_fetch 分节新增 fetch 接管说明与配置示例行；
+    `providerTextFrom` 提为导函数，新增 `test/fetch-provider.test.mjs` 4 用例 + restore 新用例，
+    全量 129/129 pass。装机冒烟（开开关后宿主日志 pinned … fetchProvider=union-search）留待 profile 验证。
+
 ## 0.11.6 (2026-11-26)
 
 - **接管悬空引用随包自愈**（平行移植上游 #159 / 767b5a4 概念，主题线 `0.11.6-rc.1`）：
