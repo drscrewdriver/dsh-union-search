@@ -52,6 +52,26 @@ test("宿主出厂值/第三方 provider 不是本插件钉选，绝不删", () 
   assert.deepEqual(removed, []);
 });
 
+test("fetchProvider: union-search 钉选残留无条件删（0.12.0）；第三方值不受影响", () => {
+  const pinned = [
+    "- id: web",
+    "  config:",
+    "    fetchProvider: union-search",
+    "",
+  ].join("\n");
+  const r1 = processPatchText(pinned);
+  assert.deepEqual(r1.removed, ["fetchProvider: union-search"]);
+  assert.ok(!r1.text.includes("union-search"));
+  const third = [
+    "- id: web",
+    "  config:",
+    "    fetchProvider: tabbit-browser",
+    "",
+  ].join("\n");
+  assert.deepEqual(processPatchText(third).removed, []);
+  assert.deepEqual(processPatchText(third, { includeFetch: true }).removed, ["fetchProvider: tabbit-browser"]);
+});
+
 test("web 条目后接注释与 CRLF 文件保持行尾风格", () => {
   const src = [
     "- id: web",

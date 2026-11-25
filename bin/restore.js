@@ -45,6 +45,13 @@ export function processPatchText(text, { includeFetch = false } = {}) {
           removed.push(`searchProvider: ${PINNED_SEARCH_ID}`);
           continue;
         }
+        // 0.12.0 fetch provider 钉选残留：值是本插件 id 时必悬空（卸载后无注册），无条件下删；
+        // 其他 fetch 值（http / 第三方）只在 --include-fetch 时清。
+        if (/^\s*fetchProvider:\s*['"]union-search['"]?\s*(#.*)?$/.test(line) ||
+            /^\s*fetchProvider:\s*union-search\s*(#.*)?$/.test(line)) {
+          removed.push("fetchProvider: union-search");
+          continue;
+        }
         if (includeFetch && /^\s*fetchProvider:/.test(line)) {
           removed.push(line.trim());
           continue;
