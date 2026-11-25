@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.2 (2026-11-26)
+
+- **出口卫生：截断与实体解码的畸形码点防护**（平行移植上游 dsh-free-search #108 系列教训，主题线 `0.11.2-rc.1` 一并落地）：
+  - 新增 `cutSafe(text, limit)` 码点安全截断基元（代理对跨界回退到高代理前），接入 `cleanSnippet`（300 上限）与
+    `extractBySelector` fields 值（500 上限）；`smartTruncate` 的自建判则收敛到同一基元，行为不变。
+  - `decodeEntities` 数字实体分支：`String.fromCharCode` → 范围校验 + `String.fromCodePoint`。此前 `&#128512;` 这类
+    星平面实体直接产出孤立代理对（两个半代理拼错字符），越界（>0x10FFFF）、孤立代理区（D800-DFFF）与 `&#0;`
+    统一丢空，不再污染会话文本（孤立代理一旦入会话历史，后续请求序列化即不可恢复失败）。纯检测截断（反爬页
+    扫描等）保留原生 slice，不影响判定。
+  - 新增 `test/egress.test.mjs` 9 用例（跨界/透传/噪声剔除锚点/实体解码四态/解码×截断组合），全量 101/101 pass。
+  - 本仓无构建步骤，`lib/index.js` 即源；`cutSafe`/`cleanSnippet`/`decodeEntities` 进 exports 供测试消费。
+
 ## 0.11.1 (2026-11-25)
 
 - feat(guide): 「重新查看引导」入口从 footer（卡片末尾）移到设置面最上方、贴士之前，并改为恒定渲染（原为收起后才出现）——与其余八个接了统一引导的插件同形态。跳过标记、十语外壳与三步正文逐字未动（`dsh.guide.union-search.skipped`）。本仓无构建步骤，`lib/client.js` 即源。
