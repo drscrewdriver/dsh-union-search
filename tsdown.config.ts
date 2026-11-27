@@ -47,4 +47,36 @@ const mcpAdapter: UserConfig = {
   outputOptions: { entryFileNames: 'mcp_adapter.js' },
 }
 
-export default defineConfig([host, mcpAdapter])
+
+/**
+ * client 半（0.17.0-rc.8 起纳入构建）：src/client/index.ts → lib/client.js。
+ * banner/footer 复刻宿主 ModuleLoader CJS 工厂协议；react 与 jsx-runtime 是平台共享模块，
+ * 打进 bundle 会得到第二份 React 实例（hooks 全废），必须 external。
+ * boot 图条目 id 必须等于 package.json name（drscrewdriver 侧 graphRow(packageName) 校验）。
+ */
+const client: UserConfig = {
+  name: `${ID}/client`,
+  entry: { client: 'src/client/index.ts' },
+  outDir: 'lib',
+  format: ['cjs'],
+  platform: 'browser',
+  target: 'es2020',
+  dts: false,
+  minify: false,
+  clean: false,
+  external: ['react', 'react/jsx-runtime', 'react-dom'],
+  outputOptions: {
+    entryFileNames: 'client.js',
+    banner: [
+      '// 宿主 boot 图条目 id = 包内 manifest name（dsh-client-modules: graphRow(packageName)），',
+      '// 浏览器侧随后还会校验自注册 id 与之逐字相等（client/system.ts: "loaded without registering"）。',
+      '// 所以这里的 id 必须等于 package.json 的 "name"，不能写 profile 键/别名——',
+      '// 0.10.15 起包名统一为裸名 dsh-union-search（scoped 时代 0.9.27~0.10.14 结束）。',
+      `window.__ModuleLoader__.load({ id: ${JSON.stringify(ID)}, factory: (require) => {`,
+    ].join(String.fromCharCode(10)),
+    footer: 'return module.exports; } });',
+    intro: 'var module = { exports: {} }; var exports = module.exports;',
+  },
+}
+
+export default defineConfig([host, mcpAdapter, client])

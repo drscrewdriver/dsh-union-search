@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.17.0-rc.8 (2026-11-28)
+
+- **client 半反抽取纳入构建（行为零变化）**：`lib/client.js`（原手写 bundle）逐字拆为
+  `src/client/css.ts`（卡片 CSS 数组+注入副作用）、`src/client/ui.ts`（常量/I18N/bridge rpc/
+  guide 区/UnionSearchCard+7 抽屉，保持 react_jsx_runtime.jsx 调用形态不做 JSX 重写）、
+  `src/client/index.ts`（inject/apply 装配）。tsdown 新增 client config（cjs/browser，
+  `window.__ModuleLoader__.load` banner/footer，external react/react-dom/jsx-runtime），
+  build 现产全部三文件；新增 tsconfig.client.json，typecheck 覆盖双半。
+  - 等价验收：新旧 bundle `.dshfs-*/.sg*` 选择器集合 79/79 完全一致（`tools/extract-client-css.mjs`
+    可复跑），注册 id `dsh-union-search` 不变，导出面仍只有 apply/inject。
+  - 新增 `test/client-smoke.test.mjs`（3 用例：ModuleLoader id 自校 / exports 形状 /
+    通用 ctx stub 下 apply 可执行且卡片 CSS 注入生效）。
+  - 真机设置页浏览器冒烟（抽屉开合/持久化）留待装机验收（tasks.md 附录）。
+- 验证：162/162 测试绿（159+3），typecheck（host+client）0 错误，产物仍 lib/ 三文件。
+
 ## 0.17.0-rc.7 (2026-11-28)
 
 - **装配面收口 + src 全量 TS 化（行为零变化）**：
