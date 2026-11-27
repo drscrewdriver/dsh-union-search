@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.17.0-rc.6 (2026-11-28)
+
+- **模型内置引擎 + 路由/回退策略抽到 `src/engines/`（逐字搬移，过渡期 JS，行为零变化）**：
+  - `src/engines/route.js`：`FREE_ENGINES`/`ALL_ENGINES`/`EXPLICIT_ONLY_ENGINES`、失败分类与冷却全套
+    （`classifyFailure`/`engineCooldowns`/`applyFailureCooldown`/`FAILURE_CLASS_LABELS`…，issue #36 语义）、
+    `TIME_ENGINES`/`SEARCH_MODES`/`DEFAULT_FALLBACK_ORDER`、`normalizeDisabledEngines`/
+    `effectiveDisabledEngines`/`normalizeFallbackOrder`/`hasCustomFallbackOrder`/`enabledEngines`/
+    `routeEngines`、同计费去重 `SAME_BILLING_FAMILY`/`dedupeSameBilling`（上游 #167）；
+  - `src/engines/model/{grok,openai,gemini,claude}.js`：四个模型内置联网引擎，「只在显式选择时
+    运行」门槛不变。
+  - index 4080→3682 行；产物仍 lib/ 三文件，导出 122 逐名相等。
+- 验证：159/159 测试绿（tool-face/egress/relevance 覆盖路由与模型门槛），typecheck 过。
+
 ## 0.17.0-rc.5 (2026-11-28)
 
 - **Keyed REST + 知乎 MCP 引擎抽到 `src/engines/keyed/*` + `src/engines/mcp.js`（逐字搬移，过渡期 JS，行为零变化）**：
