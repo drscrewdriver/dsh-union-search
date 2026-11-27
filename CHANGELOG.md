@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.17.0-rc.4 (2026-11-28)
+
+- **免费引擎族抽到 `src/engines/`（逐字搬移，过渡期 JS，行为零变化）**：
+  - `src/engines/common.js`：端点常量全集（DDG/BING/TAVILY/…/GROK）、UA/语言档案
+    （USER_AGENT/ACCEPT_LANG/LANG_PROFILES/MARKET_TO_LANG）、`uniqueSources`/`fetchHtml`/`fetchHtmlWithRetry`；
+  - `src/engines/free/ddg.js`（html/lite）、`bing.js`、`searxng.js`（三态实例源+双发综合+语言策略全套）、
+    `keyless.js`（AnySearch + Exa MCP）、`platform.js`（8 平台）、`video.js`（Bing/DDG Videos/YouTube/Vimeo）；
+  - `ignoredAnysearchKey` 改为 keyless 模块私有态 + `resetIgnoredAnysearchKey()` setter（bridge 两处直接赋值同步改造，
+    语义不变：保存 key/写入新 key 解除本进程忽略）。
+  - 本片区段本体未改一行（仅声明加 export）；index 6409→5422 行，产物仍 lib/ 三文件，导出 122 逐名相等。
+- 验证：159/159 测试绿（egress/relevance/browser-tier/alpn/md/fetch-provider 覆盖搬迁面），typecheck 过。
+
 ## 0.17.0-rc.3 (2026-11-28)
 
 - **通用层抽到 `src/util/*`（纯搬移 + 类型化，行为零变化）**：
