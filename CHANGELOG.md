@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.17.0-rc.1 (2026-11-28)
+
+- **源码入场，`lib/` 降级为产物（纯重构，行为零变化）**：`lib/index.js`、`lib/mcp_adapter.js`
+  原样迁入 `src/`（过渡期仍为 JS），新增 `tsconfig.host.json`（typecheck-only）与
+  `tsdown.config.ts`（host 半双入口 bundle，产物仍逐名写回 `lib/index.js` / `lib/mcp_adapter.js`）。
+  `lib/client.js` 本片不纳入构建（rc.8 反抽取）。
+  - 构建器选型偏离原计划（tsc 镜像 emit）：`files` 逐名锁定三个 lib 文件且 release workflow
+    不跑 build，tsc 按域拆分后会在 `lib/` 产出新文件导致漏发；改用与兄弟仓同构的 tsdown 单文件
+    bundle，`./mcp_adapter.js` 显式 external。
+  - 新增 `build` / `build:host` / `typecheck` / `pretest` 脚本；`main`/`exports`/`files` 字面未动。
+  - 新增导出面门禁 `test/export-surface.test.mjs`（基线 122 项 = 121 项 `export {}` 清单 +
+    1 个内联 `export async function assertFetchTargetAllowed`，逐名相等）。
+  - CI/release 门禁链扩为 build → typecheck → test → `git diff --exit-code -- lib` 产物对拍
+    （`_tools/release-matrix.json` 已同步并重渲染 release.yml）。
+  - 验证：159/159 测试绿（基线 158 + 导出面 1），两次构建产物 sha256 相同，导出名单与
+    0.16.0 逐名一致，`pnpm pack --dry-run` 清单不变。
+
 ## 0.16.0 (2026-11-27)
 
 - **接管残留自动回收（上游 #159）**：根因是 rc.2+ 唯一接管通道 `settings.mutate` 会把

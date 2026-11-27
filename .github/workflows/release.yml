@@ -72,7 +72,10 @@ jobs:
       - name: 门禁
         run: |
           set -euo pipefail
+          pnpm run build
+          pnpm run typecheck
           pnpm test
+          git diff --exit-code -- lib
 
       # ④ 入包清单断言（防漏文件 / 防发错来源）
       - name: 打包清单

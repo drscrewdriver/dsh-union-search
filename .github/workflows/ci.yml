@@ -1,5 +1,7 @@
 # CI baseline for dsh-union-search.
-# Generated 2026-11-05. Chain: install -> test.
+# Generated 2026-11-05. Chain: install -> build -> typecheck -> test -> artifact diff.
+# 0.17.0-rc.1: 源码化后 lib/ 降级为产物（tsdown bundle），必须入库并与 src/ 同步
+# （release workflow 不跑 build，tag 即发），末尾 diff 是「产物陈旧」硬门禁。
 # Rationale: this repo is an owned DSH plugin and previously had no workflow;
 # publish.yml is intentionally NOT included (npm secret is not uploaded to
 # GitHub Actions; releases stay manual until Trusted Publishing is configured).
@@ -8,7 +10,7 @@ name: CI
 
 on:
   push:
-    branches: [compat-legacy]
+    branches: [compat-legacy, refactor/ts-rewrite]
   pull_request: {}
 
 permissions:
@@ -28,4 +30,8 @@ jobs:
           node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm run typecheck
       - run: pnpm test
+      - name: 产物对拍（lib 必须与 src 同步）
+        run: git diff --exit-code -- lib
