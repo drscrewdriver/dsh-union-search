@@ -14,12 +14,35 @@
 
 import https from "node:https";
 import http from "node:http";
+import type { Agent } from "node:http";
+
+/** JSON-RPC 2.0 响应 envelope（只声明本适配器消费的字段）。 */
+interface McpEnvelope {
+  result?: unknown;
+  error?: { code?: number | string; message?: string };
+}
+
+/** tools/call 的工具级返回体。 */
+export interface McpCallToolResult {
+  content?: Array<{ type?: string; text?: string }>;
+  isError?: boolean;
+  [key: string]: unknown;
+}
+
+export interface McpCallOptions {
+  /** 默认 30000，<=0 表示不限 */
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  id?: number | string;
+  /** 错误消息前缀（默认取端点 hostname） */
+  label?: string;
+}
 
 // ALPN http/1.1（0.11.5 同源，上游 #162 教训）：部分网关/站点会 RST 不带 ALPN 扩展的握手；
 // 真实引擎端点走 https 时显式声明 http/1.1，本地单测的 http 端点用普通 keepAlive agent。
 const ALPN_HTTPS_AGENT = new https.Agent({ ALPNProtocols: ["http/1.1"], keepAlive: true });
 const PLAIN_HTTP_AGENT = new http.Agent({ keepAlive: true });
-function agentFor(endpoint) {
+function agentFor(endpoint: string): Agent {
   try {
     return new URL(endpoint).protocol === "http:" ? PLAIN_HTTP_AGENT : ALPN_HTTPS_AGENT;
   } catch {
@@ -32,19 +55,17 @@ function agentFor(endpoint) {
  * SSE 帧：多个 `data:` 行（同一事件内按规范以 \n 拼接）；这里同时兼容
  * “每行独立一个完整 JSON-RPC envelope”的服务端实现——两种都取能解析出的 envelope，
  * 优先带 result/error 字段的那条，否则取最后一条可解析的。
- * @param {string} rawText
- * @returns {object|null} JSON-RPC envelope，无法解析返回 null
  */
-export function parseMcpResponseText(rawText) {
+export function parseMcpResponseText(rawText: string): McpEnvelope | null {
   if (typeof rawText !== "string" || rawText.length === 0) return null;
   const direct = tryJson(rawText);
   if (direct) return direct;
 
   // SSE：按空行切事件；事件内拼接 data: 行负载
   const events = rawText.split(/\r?\n\r?\n/);
-  const payloads = [];
+  const payloads: string[] = [];
   for (const event of events) {
-    const dataLines = [];
+    const dataLines: string[] = [];
     for (const line of event.split(/\r?\n/)) {
       if (line.startsWith("data:")) dataLines.push(line.slice(5).replace(/^ /, ""));
     }
@@ -56,7 +77,7 @@ export function parseMcpResponseText(rawText) {
       if (line.startsWith("data:")) payloads.push(line.slice(5).replace(/^ /, ""));
     }
   }
-  let fallback = null;
+  let fallback: McpEnvelope | null = null;
   for (const payload of payloads) {
     const parsed = tryJson(payload);
     if (!parsed || typeof parsed !== "object") continue;
@@ -66,10 +87,10 @@ export function parseMcpResponseText(rawText) {
   return fallback;
 }
 
-function tryJson(text) {
+function tryJson(text: string): McpEnvelope | null {
   try {
-    const parsed = JSON.parse(text);
-    return parsed && typeof parsed === "object" ? parsed : null;
+    const parsed: unknown = JSON.parse(text);
+    return parsed && typeof parsed === "object" ? (parsed as McpEnvelope) : null;
   } catch {
     return null;
   }
@@ -79,15 +100,17 @@ function tryJson(text) {
  * 发送一次 JSON-RPC 2.0 请求并返回 envelope.result（工具调用的 CallToolResult）。
  * 任何失败路径都以 Error 抛出（消息见文件头分类约定），不返回部分结果。
  *
- * @param {string} endpoint MCP HTTP 端点（如 https://developer.zhihu.com/api/mcp/v1）
- * @param {object} headers 额外请求头（Authorization / 自定义 UA 等；Content-Type/Accept 内置可覆盖）
- * @param {string} method JSON-RPC 方法（"tools/call" / "initialize" / …）
- * @param {object|undefined} params JSON-RPC params
- * @param {{timeoutMs?: number, signal?: AbortSignal, id?: number|string, label?: string}} [options]
- *   timeoutMs 默认 30000，<=0 表示不限；label 用于错误消息前缀（默认取端点 hostname）
- * @returns {Promise<object>} JSON-RPC result 对象（tools/call 时为 {content, isError?}）
+ * @param endpoint MCP HTTP 端点（如 https://developer.zhihu.com/api/mcp/v1）
+ * @param headers 额外请求头（Authorization / 自定义 UA 等；Content-Type/Accept 内置可覆盖）
+ * @param method JSON-RPC 方法（"tools/call" / "initialize" / …）
  */
-export async function mcpCall(endpoint, headers = {}, method, params, options = {}) {
+export async function mcpCall(
+  endpoint: string,
+  headers: Record<string, string> = {},
+  method: string,
+  params?: object,
+  options: McpCallOptions = {},
+): Promise<McpCallToolResult> {
   const { timeoutMs = 30000, signal, id = 1 } = options;
   const label = options.label ?? safeHost(endpoint);
   const body = JSON.stringify({
@@ -115,22 +138,23 @@ export async function mcpCall(endpoint, headers = {}, method, params, options = 
   if (result === null || result === undefined || typeof result !== "object" || Array.isArray(result)) {
     throw new Error(`${label} MCP result missing or malformed: ${JSON.stringify(envelope).slice(0, 200)}`);
   }
-  if (method === "tools/call" && result.isError) {
+  const callResult = result as McpCallToolResult;
+  if (method === "tools/call" && callResult.isError) {
     // 工具级错误：isError=true，正文在 content 里，不能当搜索结果
-    const errText = mcpContentText(result);
-    throw new Error(`${label} MCP tool error (isError): ${errText.slice(0, 200) || JSON.stringify(result).slice(0, 200)}`);
+    const errText = mcpContentText(callResult);
+    throw new Error(`${label} MCP tool error (isError): ${errText.slice(0, 200) || JSON.stringify(callResult).slice(0, 200)}`);
   }
-  return result;
+  return callResult;
 }
 
 /** 从 CallToolResult.content 里取第一条 text 类型的文本（无则返回空串）。 */
-export function mcpContentText(result) {
+export function mcpContentText(result: McpCallToolResult | null | undefined): string {
   if (!result || !Array.isArray(result.content)) return "";
   const item = result.content.find((c) => c && c.type === "text" && typeof c.text === "string");
-  return item ? item.text : "";
+  return item ? item.text as string : "";
 }
 
-function safeHost(endpoint) {
+function safeHost(endpoint: string): string {
   try {
     return new URL(endpoint).hostname;
   } catch {
@@ -139,7 +163,7 @@ function safeHost(endpoint) {
 }
 
 // 真实引擎端点都是 https；http 仅为本地错误路径单测保留（同一套 node 标准库实现）
-function transportFor(endpoint) {
+function transportFor(endpoint: string): typeof https | typeof http {
   try {
     return new URL(endpoint).protocol === "http:" ? http : https;
   } catch {
@@ -147,11 +171,16 @@ function transportFor(endpoint) {
   }
 }
 
-function httpsPost(endpoint, body, headers, { timeoutMs, signal, label }) {
+function httpsPost(
+  endpoint: string,
+  body: string,
+  headers: Record<string, string>,
+  { timeoutMs, signal, label }: { timeoutMs: number; signal?: AbortSignal; label: string },
+): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false;
-    let timer = null;
-    const onAbort = () => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onAbort = (): void => {
       req.destroy(new Error(`${label} MCP request aborted`));
     };
     const req = transportFor(endpoint).request(endpoint, {
@@ -159,8 +188,8 @@ function httpsPost(endpoint, body, headers, { timeoutMs, signal, label }) {
       agent: agentFor(endpoint),
       headers: { ...headers, "content-length": Buffer.byteLength(body) },
     }, (res) => {
-      const chunks = [];
-      res.on("data", (chunk) => chunks.push(chunk));
+      const chunks: Buffer[] = [];
+      res.on("data", (chunk: Buffer) => chunks.push(chunk));
       res.on("end", () => {
         const status = res.statusCode ?? 0;
         const text = Buffer.concat(chunks).toString("utf8");
@@ -178,11 +207,11 @@ function httpsPost(endpoint, body, headers, { timeoutMs, signal, label }) {
         resolve(text);
       });
     });
-    const cleanup = () => {
+    const cleanup = (): void => {
       if (timer !== null) clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
     };
-    req.on("error", (error) => {
+    req.on("error", (error: Error) => {
       if (settled) return;
       settled = true;
       cleanup();

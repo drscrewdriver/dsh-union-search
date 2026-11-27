@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0-rc.2 (2026-11-28)
+
+- **`src/mcp_adapter.js` → `src/mcp_adapter.ts`（纯类型化，行为零变化）**：JSON/SSE 双解析、
+  `envelope.error` vs `result.isError` 判别、401/403/超时/中断六类错误消息逐字保留（grep 8 处命中）；
+  新增 `McpEnvelope`/`McpCallToolResult`/`McpCallOptions` 接口，零新增 `any`；零运行时依赖不变
+  （仅 node:https/node:http，未顺手换 fetch）。tsdown 入口改指 `.ts`。
+- 验证：159/159 测试绿（deepseek-tools/notes-channel 的 MCP 路径覆盖），导出三名不变，
+  typecheck（strict）通过。
+
 ## 0.17.0-rc.1 (2026-11-28)
 
 - **源码入场，`lib/` 降级为产物（纯重构，行为零变化）**：`lib/index.js`、`lib/mcp_adapter.js`

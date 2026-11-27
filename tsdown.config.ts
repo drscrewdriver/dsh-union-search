@@ -36,7 +36,7 @@ const host: UserConfig = {
 
 const mcpAdapter: UserConfig = {
   name: `${ID}/mcp_adapter`,
-  entry: { mcp_adapter: 'src/mcp_adapter.js' },
+  entry: { mcp_adapter: 'src/mcp_adapter.ts' },
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
