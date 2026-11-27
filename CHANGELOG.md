@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.17.0-rc.3 (2026-11-28)
+
+- **通用层抽到 `src/util/*`（纯搬移 + 类型化，行为零变化）**：
+  - `src/util/text.ts`：`decodeEntities`/`cutSafe`/`fromCodePointSafe`/`cleanSnippet`（含 SNIPPET_NOISE）/
+    `stripTags`/`stripBoundaryTags`/`wrapUntrustedBlock`（含 UNTRUSTED_BOUNDARY_*）/`extractDdgUrl`；
+  - `src/util/http.ts`：`alpnHttpsAgent`/`httpsLikeFetch`/`httpsFetchText`/`decodeResponseBody`/`hostInAllowlist`
+    （网络栈仍 node:https+ALPN，未换 fetch）；
+  - `src/util/relevance.ts`：`queryOverlapTokens`/`looksRelevant`/`guardRelevance`（三条件判据逐字保留）；
+  - `src/util/time.ts`：`TIME_RANGES`/`DAYS_BY_RANGE`/`KEENABLE_REL`/`SEARXNG_TIME`/
+    `isoDaysAgo`/`parseTimeRange`/`approximateTimeRange`。
+  - `src/index.js` 改为导入并维持原 `export {}` 清单逐名等价；新增 `any` 0 个（仅两处窄断言）。
+  - tsconfig 切 `module ESNext / moduleResolution bundler`（typecheck-only，产物由 tsdown bundle）。
+- 验证：159/159 测试绿（egress/relevance/fetch-provider/browser-tier/alpn/md 均覆盖搬迁面），
+  导出 122 逐名不变，index 源 6696→6409 行，产物仍 `lib/` 三文件。
+
 ## 0.17.0-rc.2 (2026-11-28)
 
 - **`src/mcp_adapter.js` → `src/mcp_adapter.ts`（纯类型化，行为零变化）**：JSON/SSE 双解析、

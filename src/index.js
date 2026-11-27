@@ -13,6 +13,10 @@ import { mcpCall, mcpContentText } from "./mcp_adapter.js";
 import TurndownService from "turndown";
 import { gfm } from "@joplin/turndown-plugin-gfm";
 import * as cheerio from "cheerio";
+import { TIME_RANGES, DAYS_BY_RANGE, KEENABLE_REL, SEARXNG_TIME, isoDaysAgo, parseTimeRange, approximateTimeRange } from "./util/time";
+import { decodeEntities, cutSafe, fromCodePointSafe, cleanSnippet, UNTRUSTED_BOUNDARY_OPEN, UNTRUSTED_BOUNDARY_CLOSE, stripBoundaryTags, wrapUntrustedBlock, stripTags, extractDdgUrl } from "./util/text";
+import { alpnHttpsAgent, httpsLikeFetch, httpsFetchText, decodeResponseBody, hostInAllowlist } from "./util/http";
+import { queryOverlapTokens, looksRelevant, guardRelevance } from "./util/relevance";
 
 // 兼容 guard（#55）：Node 会优先解析插件目录下的嵌套依赖，若那里残留旧的
 // @deepseek-ai/schemastery（如 node_modules/dsh-union-search/node_modules/... -> 3.18.1），
@@ -399,83 +403,6 @@ function detectInstallMode() {
   return found;
 }
 
-// time_range 支持：固定档 day/week/month/year，或自定义（相对 12h/3d/2mo/1y、绝对 YYYY-MM-DD）
-const TIME_RANGES = ["day", "week", "month", "year"];
-const DAYS_BY_RANGE = { day: 1, week: 7, month: 30, year: 365 };
-const KEENABLE_REL = { day: "1d", week: "7d", month: "1mo", year: "1y" };
-const SEARXNG_TIME = { day: "day", week: "week", month: "month", year: "year" };
-
-function isoDaysAgo(days) {
-  return new Date(Date.now() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, ".000Z");
-}
-
-// 把用户/agent 给的 timeRange 解析成统一对象：{ days } 相对天数，或 { after } 绝对日期。
-// 输入支持：day/week/month/year、12h/3d/2mo/1y、2026-07-01，或已解析的 {days}/{after} 对象。
-// 无效返回 undefined。
-function parseTimeRange(input) {
-  if (input === undefined || input === null) return undefined;
-  // 已解析对象：直接透传
-  if (typeof input === "object") {
-    if (typeof input.after === "string" && /^\d{4}-\d{2}-\d{2}$/.test(input.after)) return { after: input.after };
-    if (typeof input.days === "number" && Number.isFinite(input.days) && input.days > 0) return { days: input.days };
-    return undefined;
-  }
-  const s = String(input).trim().toLowerCase();
-  if (s.length === 0) return undefined;
-  if (TIME_RANGES.includes(s)) return { days: DAYS_BY_RANGE[s] };
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return { after: s };
-  const m = s.match(/^(\d+(?:\.\d+)?)\s*(h|hour|hours|d|day|days|w|week|weeks|mo|month|months|y|year|years)$/);
-  if (m) {
-    const n = parseFloat(m[1]);
-    const unit = m[2][0];
-    const days =
-      unit === "h" ? n / 24 : unit === "d" ? n : unit === "w" ? n * 7 : unit === "m" ? n * 30 : n * 365;
-    return { days };
-  }
-  return undefined;
-}
-
-// 把自定义天数映射到只支持固定档的引擎（Tavily / SearXNG / DDG）的最近似档位
-function approximateTimeRange(days) {
-  if (days <= 2) return "day";
-  if (days <= 14) return "week";
-  if (days <= 90) return "month";
-  return "year";
-}
-
-function decodeEntities(text) {
-  return String(text)
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n) => fromCodePointSafe(Number(n)));
-}
-
-// 码点安全截断（上游 #108 教训）：UTF-16 半代理截出孤立代理项后，JSON.stringify 会产出
-// 非法字符串污染会话且不可恢复。凡对外输出/入请求体的文本截断一律走本函数，
-// 纯检测用途（反爬页扫描等）保留原生 slice。limit 落在代理对中间时回退到高代理前。
-function cutSafe(text, limit) {
-  const s = String(text ?? "");
-  if (s.length <= limit) return s;
-  let cut = limit;
-  const hi = s.charCodeAt(cut - 1);
-  const lo = s.charCodeAt(cut);
-  if (hi >= 0xd800 && hi <= 0xdbff && lo >= 0xdc00 && lo <= 0xdfff) cut -= 1;
-  return s.slice(0, cut);
-}
-
-// 数字实体解码：星平面（>0xFFFF）必须 fromCodePoint；fromCharCode 会直接产出孤立代理。
-// 越界（>0x10FFFF）与孤立代理区（D800-DFFF）一律丢空（与浏览器实体行为一致），不造畸形码点。
-function fromCodePointSafe(n) {
-  if (!Number.isInteger(n) || n <= 0 || n > 0x10ffff) return "";
-  if (n >= 0xd800 && n <= 0xdfff) return "";
-  return String.fromCodePoint(n);
-}
-
 //#region 结果缓存（防限流/省额度，LRU 50 条，TTL 可配置 0-5 分钟）
 const CACHE_MAX_ENTRIES = 50;
 // fallback 条目（实际引擎 ≠ 首选引擎时）TTL = 配置 TTL 的 1/5（默认 5 分钟 → 60s）：
@@ -488,63 +415,11 @@ function buildCacheKey(query, maxResults, timeRangeLabel, preferred, disabledEng
 }
 //#endregion
 
-// 统一的 snippet 清洗：剔除登录/付费墙/订阅等噪音短语，折叠空白，限制长度。
-// 只在回退链出口统一应用，各引擎内部不做，避免重复处理。
-const SNIPPET_NOISE =
-  /\b(sign up|sign in|log in|login|subscribe( to| for)?|member[- ]?only|become a member|create (a )?free account|read more|continue reading|story continues|get started|install (the )?app|view on|medium membership|join \w+ for free|get updates from this writer|stories in your inbox|remember me for|unlock this|free to read|become a patron)\b/gi;
-
-function cleanSnippet(text, max = 300) {
-  if (!text) return text;
-  return cutSafe(
-    String(text)
-      .replace(SNIPPET_NOISE, " ")
-      .replace(/^\s*(#{1,6}\s*|\[\s*x?\s*\]\s*|-\s*\[\s*x?\s*\]\s*|>\s*)/gm, " ")
-      .replace(/\s+/g, " ")
-      .trim(),
-    max,
-  );
-}
-
 // 各引擎的摘要展示上限：豆包搜索返回的是千字级 Summary（实测 1300-1800 字），放宽到 2000；
 // 其余引擎维持 300。该上限同时用于 provider 成功后的清洗与 runEngineTest（喂 multi_search）。
 const SNIPPET_MAX_BY_ENGINE = { doubao: 2000 };
 function snippetCap(engine) {
   return SNIPPET_MAX_BY_ENGINE[engine] ?? 300;
-}
-
-// 提示注入防护：插件自有工具（advanced_search / platform_search / multi_search）的
-// 网页来源文本统一包进显式「不可信数据」边界，配合系统提示词里的同名说明使用。
-// 核心 web_search / web_fetch 由 DSH 核心自带 EXTERNAL_WEB_CONTENT_NOTICE，不在此重复；
-// 也不给 source.snippet 本体加标记——同一字符串会原样显示在 DSH 前端的结果卡片里。
-const UNTRUSTED_BOUNDARY_OPEN = "<untrusted-web-content>";
-const UNTRUSTED_BOUNDARY_CLOSE = "</untrusted-web-content>";
-const UNTRUSTED_BOUNDARY_TAG = /<\/?untrusted-web-content>/gi;
-
-// 防伪造：剥掉网页文本里自带的同名边界标记，避免提前闭合边界
-function stripBoundaryTags(text) {
-  return typeof text === "string" ? text.replace(UNTRUSTED_BOUNDARY_TAG, "") : text;
-}
-
-function wrapUntrustedBlock(text) {
-  return `${UNTRUSTED_BOUNDARY_OPEN}\n${stripBoundaryTags(text)}\n${UNTRUSTED_BOUNDARY_CLOSE}`;
-}
-
-function stripTags(html) {
-  return decodeEntities(String(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
-}
-
-function extractDdgUrl(rel) {
-  if (!rel) return null;
-  const m = rel.match(/uddg=([^&]+)/);
-  if (m) {
-    try {
-      return decodeURIComponent(m[1]);
-    } catch {
-      return m[1];
-    }
-  }
-  if (rel.startsWith("//")) return `https:${rel}`;
-  return rel;
 }
 
 function uniqueSources(sources, limit) {
@@ -558,77 +433,6 @@ function uniqueSources(sources, limit) {
     if (out.length >= limit) break;
   }
   return out;
-}
-
-// ALPN 抓取通道（0.11.5，上游 #162 / ec6c1bd 教训）：部分站点/中间盒会 RST 不带 ALPN 扩展的
-// TLS 握手，undici fetch 无法声明 ALPNProtocols，只能表现为 "socket hang up"；浏览器能开这些站。
-// 这里用 node:https + ALPN ["http/1.1"] 自建 fetch-like 基元：不跟重定向（advanceFetch 自带
-// 逐跳 SSRF 复检环）；解压 gzip/deflate/br；字符解码复用 decodeResponseBody（GBK 老站矩阵）。
-const alpnHttpsAgent = new https.Agent({ ALPNProtocols: ["http/1.1"], keepAlive: true });
-const alpnHttpAgent = new http.Agent({ keepAlive: true });
-
-function httpsLikeFetch(target, { headers = {}, signal, timeoutMs = 12000 } = {}) {
-  return new Promise((resolve, reject) => {
-    const urlObj = target instanceof URL ? target : new URL(String(target));
-    const transport = urlObj.protocol === "http:" ? http : https;
-    const agent = urlObj.protocol === "http:" ? alpnHttpAgent : alpnHttpsAgent;
-    const onAbort = () => req.destroy(new Error("aborted"));
-    const req = transport.request(urlObj, {
-      method: "GET",
-      agent,
-      headers: { "accept-encoding": "gzip, deflate, br", ...headers },
-      timeout: timeoutMs,
-    }, (res) => {
-      const chunks = [];
-      res.on("data", (c) => chunks.push(c));
-      res.on("end", () => {
-        signal?.removeEventListener("abort", onAbort);
-        let body = Buffer.concat(chunks);
-        const enc = String(res.headers["content-encoding"] ?? "").toLowerCase();
-        try {
-          if (enc.includes("gzip")) body = zlib.gunzipSync(body);
-          else if (enc.includes("br")) body = zlib.brotliDecompressSync(body);
-          else if (enc.includes("deflate")) {
-            try { body = zlib.inflateSync(body); } catch { body = zlib.inflateRawSync(body); }
-          }
-        } catch { /* 解压失败保留原字节，交给解码层兜底（与旧行为一致） */ }
-        const headersMap = new Map();
-        for (const [k, v] of Object.entries(res.headers)) headersMap.set(k, Array.isArray(v) ? v.join(", ") : String(v));
-        const status = res.statusCode ?? 0;
-        resolve({
-          status,
-          ok: status >= 200 && status < 300,
-          headers: { get: (k) => headersMap.get(String(k).toLowerCase()) ?? null },
-          arrayBuffer: async () => body,
-          url: res.responseUrl ?? urlObj.toString(),
-        });
-      });
-      res.on("aborted", () => reject(new Error("socket hang up (response aborted)")));
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error(`timed out after ${timeoutMs}ms`)));
-    signal?.addEventListener("abort", onAbort, { once: true });
-    req.on("error", (error) => {
-      signal?.removeEventListener("abort", onAbort);
-      reject(error);
-    });
-    req.end();
-  });
-}
-
-// 跟随机重定向（≤5 跳，浏览器语义 GET 延续）+ 文本解码；fetchHtml / fetchVideoHtml 共用。
-async function httpsFetchText(url, { headers = {}, signal, timeoutMs = 12000 } = {}) {
-  let current = url instanceof URL ? url : new URL(String(url));
-  let res;
-  for (let hops = 0; ; hops++) {
-    res = await httpsLikeFetch(current, { headers, signal, timeoutMs });
-    if (![301, 302, 303, 307, 308].includes(res.status)) break;
-    const location = res.headers.get("location");
-    if (!location) break;
-    if (hops >= 5) throw new Error("too many redirects (max 5 hops)");
-    current = new URL(location, current);
-  }
-  const text = decodeResponseBody(await res.arrayBuffer(), res.headers.get("content-type"));
-  return { status: res.status, ok: res.ok, text };
 }
 
 async function fetchHtml(url, signal, acceptLang) {
@@ -739,64 +543,6 @@ async function searchDdgLite(query, maxResults, options, signal) {
     });
   }
   return guardRelevance(query, { sources: uniqueSources(sources, maxResults ?? 10), truncated: false });
-}
-
-// Bing 在「查询无结果」时会返回一张完全无关的缓存 SERP（<li class="b_algo"> 照常存在，
-// 但内容是别的查询/热门页的内容），直接返回等于把垃圾结果喂给模型（issue #38：YouTube、
-// 法语微软文档、瑞士基金等都复现过）。这里用「查询 token 与结果文本是否重叠」识别这种页面。
-// token 规则：CJK 取二元组（单字不入判据），拉丁/数字取长度 >=2 的词。
-function queryOverlapTokens(query) {
-  const tokens = new Set();
-  for (const run of String(query).match(/[\u4e00-\u9fff]+/g) ?? []) {
-    // 单字（年/月/日/系/统）几乎出现在任何页面里，只保留二元组（上游 #112 教训）。
-    if (run.length === 2) tokens.add(run);
-    for (let i = 0; i + 1 < run.length; i++) tokens.add(run.slice(i, i + 2));
-  }
-  for (const word of String(query).toLowerCase().split(/[^a-z0-9]+/)) {
-    if (word.length >= 2) tokens.add(word);
-  }
-  return [...tokens];
-}
-
-// 相关性守卫（上游 5001357 + d019d04 终版判据，#112/#132 教训）：一批结果与查询词面重叠
-// 太少时判为空结果，交给统一回退链换下一个引擎。三条件同时成立才算相关：
-//  ① 命中源数 ≥ 1/3（至少 1）——防单条杂鱼拖整批；② token 重叠度（≥2 个或 ≥50%）；
-//  ③ 存在标题强命中（中文二元组或 ≥4 位 ASCII 词；短 ASCII 多是型号后缀不算）——
-//    缓存页/导航页正文里满屏都是热词但标题不答问，就是这种。
-function looksRelevant(query, sources) {
-  const tokens = queryOverlapTokens(query);
-  if (tokens.length === 0) return true; // 纯符号/单字查询无法判定，不拦截
-  const strong = tokens.filter((t) => !/^\d+$/.test(t));
-  const usable = strong.length > 0 ? strong : tokens;
-  const titleStrong = strong.filter((t) => /[\u4e00-\u9fff]/.test(t) || t.length >= 4);
-  const titleTokens = titleStrong.length > 0 ? titleStrong : usable;
-  const matched = new Set();
-  const titleMatched = new Set();
-  let relevant = 0;
-  for (const source of sources) {
-    const title = String(source.title ?? "").toLowerCase();
-    const hay = `${title} ${source.snippet ?? ""} ${source.url ?? ""}`.toLowerCase();
-    const hits = usable.filter((t) => hay.includes(t.toLowerCase()));
-    if (hits.length > 0) {
-      relevant += 1;
-      for (const hit of hits) matched.add(hit);
-      for (const hit of titleTokens) {
-        if (title.includes(hit.toLowerCase())) titleMatched.add(hit);
-      }
-    }
-  }
-  const enoughSources = relevant >= Math.max(1, Math.ceil(sources.length / 3));
-  const enoughTokens = matched.size >= Math.min(2, usable.length) || matched.size / usable.length >= 0.5;
-  return enoughSources && enoughTokens && titleMatched.size > 0;
-}
-
-// 引擎出口统一守卫（0.11.3）：非空但判无关的批次洗成空结果，交给回退链换下一个引擎；
-// 洗空时附带清掉 content 等聚合提示（避免无关批次的聚合文案残留进工具输出）。
-function guardRelevance(query, result) {
-  if (result?.sources?.length > 0 && !looksRelevant(query, result.sources)) {
-    return { sources: [], truncated: false };
-  }
-  return result;
 }
 
 async function searchBing(query, maxResults, options, signal) {
@@ -1520,30 +1266,6 @@ export async function assertFetchTargetAllowed(urlObj, allowPrivate) {
 // 0.10.11 反爬挑战页识别：200 状态 + 挑战文案 + 近空正文（<1500 字符）→ 判定为失败。
 // 大篇幅正文偶含关键词不触发（阈值双条件）。矩阵要求「识别为失败而不是当成正文」。
 const CHALLENGE_PAGE_PATTERN = /\bcaptcha\b|just a moment|checking your browser|verify (?:you are|that you are)|attention required|请完成安全验证|安全验证|人机验证|访问验证|验证码/i;
-
-// 0.10.11 响应解码：Content-Type charset → BOM → 前 2KB <meta charset> 扫描 → utf-8 兜底。
-// 修 GBK/GB2312 老站乱码（response.text() 固定 UTF-8，实测 mojibake）。gb2312/gbk 映射 gb18030
-// （超集，向后兼容）；TextDecoder 不认识的 label（如 small-icu 构建）catch 落回 utf-8，退化为旧行为。
-function decodeResponseBody(buffer, contentTypeHeader) {
-  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  let charset = /charset\s*=\s*"?([\w-]+)/i.exec(String(contentTypeHeader ?? ""))?.[1];
-  if (!charset && bytes.length >= 3) {
-    if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) charset = "utf-8";
-    else if (bytes[0] === 0xff && bytes[1] === 0xfe) charset = "utf-16le";
-    else if (bytes[0] === 0xfe && bytes[1] === 0xff) charset = "utf-16be";
-  }
-  if (!charset) {
-    const head = Buffer.from(bytes.buffer, bytes.byteOffset, Math.min(bytes.byteLength, 2048)).toString("latin1");
-    charset = /<meta[^>]+charset\s*=\s*["']?\s*([\w-]+)/i.exec(head)?.[1];
-  }
-  const raw = String(charset ?? "").trim().toLowerCase();
-  const label = ["gb2312", "gbk", "gb18030", "csgb2312", "gb13000"].includes(raw) ? "gb18030" : raw || "utf-8";
-  try {
-    return new TextDecoder(label, { fatal: false }).decode(bytes);
-  } catch {
-    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  }
-}
 
 // 按域 cookie 表解析（0.10.12）：逐行 `域名 cookie串`，行内以首个空白分隔（cookie 值含 `=`/分号不受影响）；
 // `#` 注释行与空行跳过，域名归一小写并剥前导点；坏行（无空白分隔/缺 cookie 值）静默丢弃。
@@ -3838,15 +3560,6 @@ function providerTextFrom(result) {
     return result.extracted.map((f) => `- ${f.label}: ${f.value || "(no match)"}`).join("\n");
   }
   return String(result.markdown ?? result.text ?? "");
-}
-
-// 浏览器升级档判据（0.13.0，导出供测试）：
-// hostInAllowlist：逗号分隔后缀表；空表=全放行（总开关在调用方）；匹配 host 全名或 .后缀。
-function hostInAllowlist(hostname, allowCsv) {
-  const list = String(allowCsv ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (list.length === 0) return true;
-  const h = String(hostname ?? "").toLowerCase();
-  return list.some((d) => h === d || h.endsWith(`.${d}`));
 }
 
 // 升级特征：直连报错（HTTP 4xx / 反爬挑战页）或成功但 note 里报了 JS 空壳/frameset。
