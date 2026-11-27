@@ -114,3 +114,10 @@ export async function fetchHtmlWithRetry(url, signal, acceptLang) {
   }
   throw lastError ?? new Error("fetch failed");
 }
+
+// (rc.5) snippetCap 随 keyed/doubao 依赖迁入本共用面
+// 其余引擎维持 300。该上限同时用于 provider 成功后的清洗与 runEngineTest（喂 multi_search）。
+const SNIPPET_MAX_BY_ENGINE = { doubao: 2000 };
+export function snippetCap(engine) {
+  return SNIPPET_MAX_BY_ENGINE[engine] ?? 300;
+}

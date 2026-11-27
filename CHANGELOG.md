@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.17.0-rc.5 (2026-11-28)
+
+- **Keyed REST + 知乎 MCP 引擎抽到 `src/engines/keyed/*` + `src/engines/mcp.js`（逐字搬移，过渡期 JS，行为零变化）**：
+  exa/tavily/firecrawl/parallel（MCP 会话缓存改模块私有态）/keenable/perplexity/deepseek-official/
+  serpbase（SERPBASE_LOCALE 供 serply 复用）/serply/youcom/baidu/kimi/deepseek-tools/aliyun/domestic
+  （智谱+Bocha+Metaso+REL_TO_ONE）/doubao；知乎全局/站内 MCP 引擎独立 `mcp.js`（继续走 mcp_adapter，
+  未换 fetch）。`snippetCap`/`SNIPPET_MAX_BY_ENGINE` 共用面并入 `src/engines/common.js`。
+  import 头由各区段实际引用自动校验生成；index 5422→4080 行。
+- 验证：159/159 测试绿（deepseek-tools/notes-channel/credentials/egress 覆盖搬迁面），typecheck 过，
+  导出 122 逐名相等（见提交对拍），产物仍 lib/ 三文件。
+
 ## 0.17.0-rc.4 (2026-11-28)
 
 - **免费引擎族抽到 `src/engines/`（逐字搬移，过渡期 JS，行为零变化）**：
