@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.17.0 (2026-11-28)
+
+**TypeScript 源码化（rc.1…rc.9 九片阶梯，对外发布面零变化）**——本仓历史上第一次有 src/：
+
+- rc.1 骨架入场 + 导出面门禁（122 逐名）；rc.2 mcp_adapter TS 化；rc.3 通用层 util/{text,http,relevance,time}；
+  rc.4 免费引擎族 + 引擎共用面；rc.5 keyed REST 全家 + 知乎 MCP；rc.6 模型内置引擎 + 路由/计费去重；
+  rc.7 装配面（takeover/update/advance/fetch-provider/settings/guidance）+ src 全量 .ts 化（去 allowJs）；
+  rc.8 client 反抽取 src/client/{css,ui,index} 入构建（选择器 79/79 等价）；rc.9 bin/restore.js 与
+  tools/server.mjs 源码迁 src/cli/（构建逐名输出回原路径）。
+- 不变面：package.json main/exports/files 字面未动；`lib/` 三文件产物 + `bin/restore.js` 可执行契约；
+  122 导出逐名；ModuleLoader id / apply+inject / cordis.patch.yml `web-search-free` 锚；pack 清单 17 文件。
+- 测试 158→162（+导出面 1、+client 冒烟 3）；门禁链 build → typecheck → test → lib 对拍（ci + release 同步）。
+- 过渡期偏离（详见各 rc 条目与 .agents/plans/union-search-ts-rewrite/findings.md）：构建器 tsc→tsdown；
+  strict 四分量（noImplicitAny/strictNullChecks/noImplicitThis/useUnknownInCatchVariables）显式关闭，
+  新增标注 66 处 any 断链；真机装机冒烟（web_search/advanced_search/advance_fetch/设置页/
+  `/union-search-engine`）待执行。
+
+## 0.17.0-rc.9 (2026-11-28)
+
+- **CLI 脚本源码化（行为零变化）**：`bin/restore.js` → `src/cli/restore.ts`、`tools/server.mjs` →
+  `src/cli/server.ts`，tsdown 新增两 config 逐名输出回 `bin/restore.js` / `tools/server.mjs`
+  （路径契约不变，`files` 不含 tools 故发布面无变化）。
+- 验证：162/162 测试绿（restore/restore-auto 走产物 bin/restore.js），typecheck 0 错误，
+  `node bin/restore.js --dry` 实跑正常，`pnpm pack --dry-run` 清单 17 文件与 0.16.0 基线逐名相等。
+
 ## 0.17.0-rc.8 (2026-11-28)
 
 - **client 半反抽取纳入构建（行为零变化）**：`lib/client.js`（原手写 bundle）逐字拆为

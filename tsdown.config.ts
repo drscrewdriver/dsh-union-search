@@ -79,4 +79,31 @@ const client: UserConfig = {
   },
 }
 
-export default defineConfig([host, mcpAdapter, client])
+
+// rc.9：CLI 脚本源码在 src/cli/，构建逐名输出回原路径（bin/restore.js 随包发布、tools/server.mjs 仓内工具）。
+const cliRestore: UserConfig = {
+  name: `${ID}/restore`,
+  entry: { restore: 'src/cli/restore.ts' },
+  outDir: 'bin',
+  format: ['esm'],
+  platform: 'node',
+  target: 'es2022',
+  dts: false,
+  minify: false,
+  clean: false,
+  outputOptions: { entryFileNames: 'restore.js' },
+}
+
+const cliServer: UserConfig = {
+  name: `${ID}/server`,
+  entry: { server: 'src/cli/server.ts' },
+  outDir: 'tools',
+  format: ['esm'],
+  platform: 'node',
+  target: 'es2022',
+  dts: false,
+  minify: false,
+  clean: false,
+  outputOptions: { entryFileNames: 'server.mjs' },
+}
+export default defineConfig([host, mcpAdapter, client, cliRestore, cliServer])
