@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.17.0-rc.7 (2026-11-28)
+
+- **装配面收口 + src 全量 TS 化（行为零变化）**：
+  - 新增 `src/provider-takeover.ts`（classifyPin/computeTakeoverState/rollbackPinnedFields）、
+    `src/provider-update.ts`（verifyInstalledVersion/detectInstallMode/compareVersions/fetchLatestVersion）、
+    `src/advance.ts`（advance_fetch 全套：宿主 twin turndown/CSS 抽取/SSRF 门/cookie 表）、
+    `src/fetch-provider.ts`（providerTextFrom/browserUpgradeNeeded/browserTierFetch/shapeFetchResult）、
+    `src/settings.ts`（Config schemastery 声明 + 旧 `free-search:` settings.yaml 迁移 + resolveConfig）、
+    `src/guidance.ts`（HELP_TOPICS/TOOL_TOPICS/firstTouchGuidance）。
+  - `src/` 下所有过渡期 `.js` 全量重命名为 `.ts`（共 36 个文件），tsconfig **去除 allowJs**；
+    tsdown 入口改指 `src/index.ts`，产物仍逐名写回 `lib/index.js`（三文件契约不变）。
+  - 过渡期类型闸机偏离（记录于 tsconfig 注释与 findings）：`strict: true` 名义保留，但显式关闭
+    `noImplicitAny`/`strictNullChecks`/`noImplicitThis`/`useUnknownInCatchVariables` 四个分量；
+    新增标注面 = 64 处 `: any` + 2 处 `as any`（均为声明位断链，零运行时变化），后续收紧计划见 findings。
+  - `assertFetchTargetAllowed` 改为 advance.ts 导出 + index `export { … }` 再导出，122 项逐名等价不变。
+- 验证：159/159 测试绿，typecheck 0 错误，产物仍 lib/ 三文件，导出 122 逐名相等；index 3682→~2671 行。
+
 ## 0.17.0-rc.6 (2026-11-28)
 
 - **模型内置引擎 + 路由/回退策略抽到 `src/engines/`（逐字搬移，过渡期 JS，行为零变化）**：

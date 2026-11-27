@@ -5,13 +5,20 @@
     "target": "ES2022",
     "rootDir": "src",
     "noEmit": true,
-    "allowJs": true,
-    "checkJs": false,
     "strict": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "noImplicitThis": false,
+    "useUnknownInCatchVariables": false,
     "declaration": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.js", "src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "//": [
+    "rc.7 起 src 全量 .ts（无 allowJs）。strict:true 名义保留，但过渡期显式关闭",
+    "noImplicitAny/strictNullChecks/noImplicitThis/useUnknownInCatchVariables 四个分量：",
+    "逐字搬移的 6000+ 行 JS 一次性补全标注不现实，收紧计划见 findings。"
+  ]
 }

@@ -22,7 +22,7 @@ const HOST_EXTERNALS = ['./mcp_adapter.js']
 
 const host: UserConfig = {
   name: ID,
-  entry: { index: 'src/index.js' },
+  entry: { index: 'src/index.ts' },
   outDir: 'lib',
   format: ['esm'],
   platform: 'node',
