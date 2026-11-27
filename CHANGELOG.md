@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.15.0 (2026-11-27)
+
+- **新引擎 `deepseek-tools`**：直连 `POST /v1/tools/search`，无模型参与；同 query 实测 ~0.3s，
+  对比 `deepseek-official`（走 /anthropic/v1/messages 模型轮次）约 5-6s，快 ~20×。
+  复用现有 `deepseekApiKey` / `DEEPSEEK_API_KEY`，不新增凭据；默认加入回退链且排在
+  `deepseek-official` 之前。协议层照 `searchKimi` 骨架（AbortController + 35s 内置超时 +
+  组合外部 signal + `redirect:"error"`）；错误分类三档（401/403 key 无效 / 非 2xx 带 status+detail /
+  网络异常包装）；`max_results` 钳制 1-20。
+- **透传 `rerank_score`→`score`、`authority`→`authority`**：服务端已算好，缺失时不写入该键（不造假值）；
+  `summary` 与 `snippet` 两字段名都兼容；multi 合并结果同样保留分数字段。
+- **端点可配 `deepseekToolsBaseUrl`**（volatile 热生效）：自建网关场景；完整端点 URL 与 base 两种填法
+  都吃（后缀嗅探），空/非法回落官方默认端点；设置页 API Key 抽屉新增输入框（zh/en 双语）。
+- **multi 模式同计费上游去重（处理上游 #167）**：`deepseek-tools` 与 `deepseek-official` 归为同一
+  计费族，同时点名只发先点名的一路，被跳过项列在结果 note 的 `dedupedSameBilling`；README zh/en 同步。
+- 新增 `test/deepseek-tools.test.mjs` 12 用例（已加进 `test` 脚本）；全量 147/147 pass（基线 135）。
+- `deepseek-official` / `kimi` 行为零变化；`blockSystemSearch` 仍只剔除出厂两 id，不误伤 `deepseek-tools`。
+
 ## 0.14.0 (2026-11-27)
 
 - **设置页按种类抽屉化**（主题线 `0.14.0-rc.1`/`rc.2`）：设置页重组为 7 个可折叠 Section 抽屉，

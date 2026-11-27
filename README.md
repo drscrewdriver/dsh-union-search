@@ -73,6 +73,7 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 | `perplexity` | Perplexity | 付费 | 需 `PERPLEXITY_API_KEY` |
 | `serpbase` | SerpBase | 付费 | 需 `SERPBASE_API_KEY`（serpbase.dev，注册送 100 次免费额度） |
 | `serply` | Serply | 付费 | 需 `SERPLY_API_KEY`（serply.io，新账户 30 天内 2,500 次免费额度）；Google 网页结果，按设置页语言本地化 |
+| `deepseek-tools` | DeepSeek 原生搜索 API | 付费 | 需 `DEEPSEEK_API_KEY`（与 `deepseek-official` 同一 key）；直接 `POST /v1/tools/search` **无模型参与**，同 query 实测 ~0.3s（对比 official 约 5-6s）；透传 `rerank_score`/`authority`；端点可经 `deepseekToolsBaseUrl` 改自建网关（完整 URL 或 base 都吃） |
 | `deepseek-official` | DeepSeek 官方 | 付费 | 需 `DEEPSEEK_API_KEY`；官方定价 Search **$0.75 / 千次成功请求（≈ 单次 5 厘）**（2026-10 口径；经 DSH 宿主的服务端工具调用 2026-11-01 前免费），见下方「DeepSeek 官方定价」 |
 | `you` | You.com | 付费 | 需 `YOUCOM_API_KEY`（you.com/platform/api-keys，注册即送免费额度） |
 | `baidu` | 百度千帆 AI 搜索 | 额度 | 需 `BAIDU_API_KEY`（千帆 AI 搜索，每日赠 50 次，超额按量后付费）；中文全网，支持时间过滤 |
@@ -343,6 +344,7 @@ deepseekApiKey: ...
 - **去重与合并**：按规范化 URL 去除结尾斜杠并合并结果，多引擎共同命中的条目优先置顶排在最前，并在结果附带 `seenIn` 命中来源清单（如 `[seen in: bing, exa]`）。
 - **不可信边界与清洗**：严格遵守 `<untrusted-web-content>` 数据边界，正文 snippet 统一清洗。
 - ⚠️ 注：多源并发会消耗更多 API 配额，建议在需要多角度核验时按需使用。
+- **同计费上游去重（0.15.0）**：`deepseek-tools` 与 `deepseek-official` 共用同一个 `DEEPSEEK_API_KEY`（同一账号），multi 模式同时点名两者会**双计费**；现已自动只保留先点名的一路，被跳过项列在结果 note 的 `dedupedSameBilling` 里。
 
 #### 抓取网页内容（web_fetch）
 
@@ -485,6 +487,7 @@ If this plugin has been helpful, a ⭐ on [GitHub](https://github.com/drscrewdri
 | `perplexity` | Perplexity | Paid | Requires `PERPLEXITY_API_KEY` |
 | `serpbase` | SerpBase | Paid | Requires `SERPBASE_API_KEY` (serpbase.dev, 100 free queries on signup) |
 | `serply` | Serply | Paid | Requires `SERPLY_API_KEY` (serply.io, 2,500 free credits for the first 30 days); Google web results localized to the settings language |
+| `deepseek-tools` | DeepSeek Native Search API | Paid | Requires `DEEPSEEK_API_KEY` (same key as `deepseek-official`); hits `POST /v1/tools/search` directly with **no model in the loop** — ~0.3s vs ~5-6s for official on the same query; passes through `rerank_score`/`authority`; endpoint switchable to a self-hosted gateway via `deepseekToolsBaseUrl` (full URL or base both accepted) |
 | `deepseek-official` | DeepSeek Official | Paid | Requires `DEEPSEEK_API_KEY`; official pricing: Search **$0.75 per 1,000 successful requests (≈ ¥0.005 per request)** (as of 2026-10; server-side tool calls through the DSH harness are free until 2026-11-01) — see "DeepSeek official pricing" below |
 | `you` | You.com | Paid | Requires `YOUCOM_API_KEY` (you.com/platform/api-keys, free tier on signup) |
 | `baidu` | Baidu Qianfan AI Search | Quota | Requires `BAIDU_API_KEY` (Qianfan AI Search, 50 free calls/day then pay-as-you-go); Chinese web-wide, supports time filtering |
@@ -748,6 +751,7 @@ When you need **cross-source verification** to prevent biases or fail-safes from
 - **Deduplication & Merge**: Normalizes URLs and ranks items by the number of engines that found them (`seenIn` counts), with cross-hit results placed at the top.
 - **Untrusted Boundary**: Enforces the `<untrusted-web-content>` safety wrapper and trims snippets.
 - ⚠️ Note: Running multiple engines in parallel consumes more search quota; use on demand when high source diversity is needed.
+- **Same-billing upstream dedup (0.15.0)**: `deepseek-tools` and `deepseek-official` share one `DEEPSEEK_API_KEY` (same account), so naming both in multi mode would **double-bill** it; only the first-named engine now runs, and the skipped one is listed under `dedupedSameBilling` in the result note.
 
 #### Fetch Webpage Content (`web_fetch`)
 
