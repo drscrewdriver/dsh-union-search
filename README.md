@@ -179,6 +179,16 @@ Error: configured web provider "ddg" is not registered
 > 对本插件的三个后果：①接管判据不受影响（未设置 → 仍是本插件的接管分支，`ddg` 两种出厂 id 仍在白名单内）；②**钉选变得更要紧**——一旦 `settings.mutate` 没落地（settings 服务尚未挂载时本插件会延迟重试），`web_search` 不再报 `WEB_PROVIDER_AMBIGUOUS`，而是**静默**走官方通道，看起来像"插件没生效"却没有任何错误；③设置页的搜索 provider 菜单多出一个「自动」项（`AUTO_ID` 空串），选中它会 `resetField` 清掉 `searchProvider` 覆盖，于是本插件的钉选被解除、搜索回到官方通道——这不是 bug，是官方新语义，但要知道点了什么。
 > 自查：日志里出现 `union-search: pinned web entry config searchProvider=ddg` 才算接管成功；只有出现 `settings service not ready` / `could not pin` 才是没落地。
 
+#### 接管残留自动回收（0.16.0）
+
+上面 `CONFIGURED_MISSING` 悬空的根因是「rc.2+ 唯一接管通道 `settings.mutate` 会落盘到 `cordis.patch.yml`」。0.16.0 起在「写」的两端自动补救，三种场景各有覆盖：
+
+- **停用插件 = 自动清**：`autoRestoreOnDispose`（默认开）开启时，本插件在停用/dispose 时自动 `unset` 它自己写进 `web` 条目的 `searchProvider` / `fetchProvider` 钉选行——**只删自己写过的值**（回滚前比对当前值 === 写入值），你后来手改成别家 provider、或本就不是本插件写的，一律不动。
+- **上次没清干净 = 启动自检**：崩溃/断电等未走 dispose 的情况，下次启动会在接管动作前自检当前钉选态：命中**本插件旧 id**（如改名前的 `web-search-free`）即安全清除；命中**能解析到已注册 provider** 的外部 id（你显式选的第三方）→ 静默不动；命中**解析不到的悬空 id**（别的已卸载插件留的）→ 打 ERROR 级日志给出修复命令，但**不自动删**（删别人的配置风险高于提示）。
+- **卸载 = 需手跑 `bin/restore.js --apply`**：`pnpm remove` 之后插件代码已不在磁盘上，任何钩子都不会执行——这是执行模型的物理边界，无法靠开关绕过。卸载前请先在设置页关掉接管，或卸载后跑一次 `node node_modules/dsh-union-search/bin/restore.js --apply`（0.11.6+，只删本插件钉选行，默认 dry-run）。
+
+自检结论会反映到设置页「屏蔽系统自带搜索」抽屉底部的接管状态行（正常 / 悬空残留 / 外部占用），`autoRestoreOnDispose` 关掉后回滚登记与自检清除都停用，仅保留检测与提示。
+
 > 如果你曾按旧文档手动在 `profiles/<profile>/cordis.patch.yml` 里加过下面这段，而插件没有启用，就会看到上面那条错误——**删掉这段即可**（或重新启用插件）：
 
 ```yaml
@@ -585,6 +595,16 @@ Without that override, a disabled plugin leaves `web.searchProvider` at the ship
 > **0.2.2-rc.5 mechanism change (important — the failure mode changed)**: the host **deleted** the hard-coded `searchProvider: deepseek-search-api` from `- id: web`, keeping only `fetchProvider: http`, and now selects per model-request route when nothing is configured — `deepseek-official` / `deepseek-account` routes get `deepseek-official` (server-side Messages search, not billed per search), every other route and requests outside a model turn get `deepseek-search-api`.
 > Three consequences for this plugin: ① the takeover criterion is unaffected (unset → still this plugin's takeover branch, and both shipped ids stay in the whitelist); ② **the pin matters more than before** — if `settings.mutate` never lands (this plugin defers and retries when the settings service is not mounted yet), `web_search` no longer raises `WEB_PROVIDER_AMBIGUOUS`; it **silently** goes to the official provider, so it looks like "the plugin did nothing" with no error at all; ③ the search-provider menu on the settings page gained an "Automatic" entry (empty id), and picking it calls `resetField`, clearing the `searchProvider` override — i.e. it releases this plugin's pin and search returns to the official provider. That is official behaviour, not a bug, but be aware of what the click does.
 > Self-check: takeover only succeeded when the log shows `union-search: pinned web entry config searchProvider=ddg`; seeing `settings service not ready` / `could not pin` means it did not land.
+
+#### Takeover residue auto-reclaim (0.16.0)
+
+The root cause of the `CONFIGURED_MISSING` dangling above is that on rc.2+ the only takeover channel, `settings.mutate`, persists into `cordis.patch.yml`. From 0.16.0 the plugin patches both ends of that write, one mechanism per scenario:
+
+- **Plugin disable = auto-clear**: with `autoRestoreOnDispose` (on by default), disabling this plugin un-pins the `searchProvider` / `fetchProvider` rows it wrote into the `web` entry — **it only removes values it wrote itself** (it compares current === pinned before un-setting), so a value you later hand-switched to another provider, or anything this plugin never wrote, is left intact.
+- **Unclean previous exit = startup self-check**: for crashes / power loss that skip dispose, the next start runs a self-check before takeover. A hit on **this plugin's legacy id** (e.g. the pre-rename `web-search-free`) is cleared safely; a hit on an **external id that resolves to a registered provider** (a third party you picked on purpose) is left silently alone; a hit on an **unresolvable dangling id** (left by some other uninstalled plugin) logs an ERROR with the repair command but is **not auto-deleted** (removing someone else's config is riskier than warning).
+- **Uninstall = run `bin/restore.js --apply` by hand**: after `pnpm remove` the plugin code is gone from disk, so no hook can run — a physical limit of the execution model, not something a toggle can bypass. Turn off takeover on the settings page before uninstalling, or run `node node_modules/dsh-union-search/bin/restore.js --apply` afterwards (since 0.11.6, removes only this plugin's pinned rows, dry-run by default).
+
+The self-check verdict surfaces on the "Block built-in system search" drawer as a takeover-status line (OK / dangling / external). With `autoRestoreOnDispose` off, both the dispose rollback and the self-check clearing are disabled — only detection and the warning remain.
 
 > If you previously added the snippet below by hand to `profiles/<profile>/cordis.patch.yml` *and* the plugin is not enabled, you will see that error — **just remove the snippet** (or re-enable the plugin):
 

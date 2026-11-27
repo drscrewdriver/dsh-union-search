@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.16.0 (2026-11-27)
+
+- **接管残留自动回收（上游 #159）**：根因是 rc.2+ 唯一接管通道 `settings.mutate` 会把
+  `web.searchProvider`/`fetchProvider` 钉选落盘到 `cordis.patch.yml`，插件停用/崩溃后该持久值悬空成
+  `CONFIGURED_MISSING`。本次采用 **dispose 钩子 + 启动自检双保险**（宿主 0.2.3-alpha.2 探测证实无
+  非持久化 pin 通道，故在「写」的两端补救）。
+  - **停用自动回滚**：接管写入成功时登记 `ctx.effect` disposer，dispose 时只 `unset` 本插件自己写过的
+    字段（回滚前比对当前值 === 写入值）；已被用户改成第三方 id / 已是宿主出厂 id / 字段已不存在 →
+    只记日志不动。主路径 `settings.mutate` 的 unset（宿主 config-editor 会把空 config 的钉选行整行
+    清掉），抛错回落 `bin/restore.js` 文本状态机；回滚失败打 WARN 不中断 dispose。
+  - **启动自检**：接管前读当前钉选，`classifyPin` 五分类（absent/ours/shipped/our-legacy/foreign）；
+    `our-legacy`（旧 id 名单，如 `web-search-free`）命中即安全清除；`foreign` 能解析到已注册 provider
+    → 静默不动，解析不到 → ERROR 日志给修复命令但不自删。正常态零日志。
+  - **新配置 `autoRestoreOnDispose`**（boolean，默认 true，volatile 热生效）：关掉则跳过 dispose 登记与
+    自检清除，仅保留检测与 WARN。设置页「屏蔽系统自带搜索」抽屉新增开关 + 接管状态行（正常/悬空残留/
+    外部占用三态，走同一对 zh/en 文案）；bridge 新增 `/takeover-status`。
+  - **诚实边界**：卸载（`pnpm remove` 后插件代码不存在）任何钩子都无法执行，README 与日志均明写
+    需手跑 `bin/restore.js --apply`，不夸大。抽出模块级 `rollbackPinnedFields`/`classifyPin`/
+    `computeTakeoverState` 纯函数并导出。
+- 新增 `test/restore-auto.test.mjs` 11 用例（已加进 `test` 脚本）；全量 158/158 pass（基线 147）；
+  `test/restore.test.mjs` 零改动全绿。`fetchTakeover` 三态 / `blockSystemSearch` / V1 `deepseek-tools`
+  / `bin/restore.js` 命令行行为均不变。
+
 ## 0.15.0 (2026-11-27)
 
 - **新引擎 `deepseek-tools`**：直连 `POST /v1/tools/search`，无模型参与；同 query 实测 ~0.3s，
