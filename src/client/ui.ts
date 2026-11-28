@@ -91,6 +91,8 @@ export const I18N = {
     advanceFetchEnabledHint: "【实验性 · 免费】零 key、零按次计费（区别于按次计费的付费搜索 API）。整页 GitHub-Flavored Markdown（宿主同款转换配置）+ CSS selector/fields 定向结构化抽取。关闭后调用被拒绝（热生效），系统提示词也不再宣传该工具。",
     advanceFetchAllowPrivate: "允许 advance_fetch 访问内网",
     advanceFetchAllowPrivateHint: "SSRF 防护地址门：默认拒绝回环/私有/链路本地/云元数据地址；开启后放行（用于自建的局域网设备，如本地 SearXNG/Dashboard 页面）。协议门（仅 http/https）与重定向限次不受影响。",
+    bridgeRestrictLoopback: "设置桥只接受本机回环请求",
+    bridgeRestrictLoopbackHint: "默认关闭：设置桥的准入交给宿主自身的登录鉴权（浏览器登录态 cookie），因此反向代理部署下设置页照常可用。开启后额外要求请求来自字面回环地址（127.0.0.1 / localhost / [::1]），反代部署将不再可用。注意：宿主没有鉴权能力的旧版本上本开关无效——那里始终强制回环，不可关闭。",
     advanceFetchUserAgent: "advance_fetch 自定义 UA",
     advanceFetchUserAgentHint: "抓取请求使用的 User-Agent，空 = 内置默认。用于目标站按 UA 拦截的场景。",
     advanceFetchReferer: "advance_fetch 自定义 Referer",
@@ -242,6 +244,8 @@ export const I18N = {
     advanceFetchEnabledHint: "[Experimental · free] No API key and no per-request billing (unlike the metered paid search APIs). Whole-page GitHub-Flavored Markdown (host-twin conversion profile) + CSS selector/fields structured extraction. When off, calls are rejected (hot) and the system prompt stops advertising the tool.",
     advanceFetchAllowPrivate: "Allow advance_fetch to reach private networks",
     advanceFetchAllowPrivateHint: "SSRF address gate: by default loopback/private/link-local/metadata targets are refused; enable to allow them (self-hosted LAN devices such as a local SearXNG or dashboard). The protocol gate (http/https only) and the redirect cap are unaffected.",
+    bridgeRestrictLoopback: "Restrict the settings bridge to loopback requests",
+    bridgeRestrictLoopbackHint: "Off by default: the settings bridge delegates admission to the host's own login authentication (browser session cookie), so the settings page keeps working behind a reverse proxy. When on, requests must additionally come from a literal loopback address (127.0.0.1 / localhost / [::1]) and reverse-proxy deployments stop working. Note: on hosts without a request-admission capability this switch has no effect — loopback is forced there and cannot be turned off.",
     advanceFetchUserAgent: "advance_fetch custom User-Agent",
     advanceFetchUserAgentHint: "User-Agent sent with advance_fetch requests; empty = built-in default. Use when a target site blocks by UA.",
     advanceFetchReferer: "advance_fetch custom Referer",
@@ -883,6 +887,7 @@ export function UnionSearchCard(props) {
   // 0.10.3：自有 advance_fetch 开关 / SearXNG 语言锁定档
   const [advanceFetchEnabled, setAdvanceFetchEnabled] = react.useState(true);
   const [advanceFetchAllowPrivate, setAdvanceFetchAllowPrivate] = react.useState(false);
+  const [bridgeRestrictLoopback, setBridgeRestrictLoopback] = react.useState(false);
   const [searxngLang, setSearxngLang] = react.useState("auto");
   // SearXNG 实例三态(public/local/custom)+ 本地地址 + 自定义列表文本 + 探测结果
   const [searxngMode, setSearxngMode] = react.useState("public");
@@ -969,6 +974,7 @@ export function UnionSearchCard(props) {
           setDeepseekToolsBaseUrl(typeof v.deepseekToolsBaseUrl === "string" ? v.deepseekToolsBaseUrl : "");
           setAdvanceFetchEnabled(v.advanceFetchEnabled !== false);
           setAdvanceFetchAllowPrivate(v.advanceFetchAllowPrivate === true);
+          setBridgeRestrictLoopback(v.bridgeRestrictLoopback === true);
           setSearxngLang(typeof v.searxngLanguage === "string" && v.searxngLanguage ? v.searxngLanguage : "auto");
           // secrets 字段标记哪些 key 已配置（值被脱敏，仅显示"已配置"）
           const configured: any = {};
@@ -1210,6 +1216,7 @@ export function UnionSearchCard(props) {
       ops.push({ op: "set", path: ["deepseekToolsBaseUrl"], value: String(deepseekToolsBaseUrl).trim() });
       ops.push({ op: "set", path: ["advanceFetchEnabled"], value: advanceFetchEnabled });
       ops.push({ op: "set", path: ["advanceFetchAllowPrivate"], value: advanceFetchAllowPrivate });
+      ops.push({ op: "set", path: ["bridgeRestrictLoopback"], value: bridgeRestrictLoopback });
       ops.push({ op: "set", path: ["searxngLanguage"], value: searxngLang });
       const result = await bridgeMutate({ ns: NS, ops });
       if (!result || !result.ok) {
@@ -2501,6 +2508,32 @@ react_jsx_runtime.jsx(Section, { id: "fetch", title: t.sec_fetch, defaultOpen: f
                   react_jsx_runtime.jsx("p", {
                     className: "dshfs-hint",
                     children: t.advanceFetchAllowPrivateHint,
+                  }),
+                ],
+              }),
+              react_jsx_runtime.jsx("div", {
+                className: "dshfs-field",
+                children: [
+                  react_jsx_runtime.jsx("label", {
+                    className: "dshfs-platform",
+                    children: [
+                      react_jsx_runtime.jsx("input", {
+                        type: "checkbox",
+                        checked: bridgeRestrictLoopback,
+                        disabled: !ready || saving,
+                        onChange: (e) => {
+                          setBridgeRestrictLoopback(e.target.checked);
+                          setDirty(true);
+                          setFailed(false);
+                          setSaveError("");
+                        },
+                      }),
+                      t.bridgeRestrictLoopback,
+                    ],
+                  }),
+                  react_jsx_runtime.jsx("p", {
+                    className: "dshfs-hint",
+                    children: t.bridgeRestrictLoopbackHint,
                   }),
                 ],
               }),

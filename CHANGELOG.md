@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.19.0 (2026-11-29)
+
+**设置桥准入改为「宿主鉴权优先，回环可选加固」——反代部署下 12 条设置桥路由不再必然 403。**
+
+- 0.18.0（rc.1…rc.3）：新增 `src/fence.ts` 闸门内核。三代宿主按**能力**探测而非版本号
+  （`engines.dsh` 横跨两代）：
+  - 0.2.3-alpha.1+ → `webserver/authorize` 瀑布存在（`ctx.bail(...) !== undefined` 即证据，deny 也算）；
+    route 声明 `auth: 'required'`，准入由宿主执行。
+  - 0.1.2-rc.1 … 0.2.2-rc.5 → `connection.requestRejection`（返回 401/403/undefined），路由内先判；
+    抛错一律 fail closed 403。
+  - 0.1.0-rc.7 / 0.1.1 → 两代机制皆无 → **强制回环**（行为与 0.17.0 逐字相同），并 warn 一次。
+  探测在 apply 期只跑一次（WeakMap 按 ctx 缓存），不随请求重复。
+- 0.19.0（rc.1…rc.4）：新增设置项 `bridgeRestrictLoopback`（默认 `false`，volatile 热生效）+
+  设置页 checkbox + zh/en 文案。开关只控制「是否**额外**加回环」，不控制「是否有闸」；
+  每请求读 `current()`，勾选/取消即时生效，不重注册路由。
+- 不变面：122 具名导出逐名（新逻辑全部不导出）、`lib/` 三文件契约、client bundle 的
+  id/apply/inject、`cordis.patch.yml` 的 `web-search-free` 锚、`locale/*.json` 结构、`bin/restore.js`。
+- 测试 162 → 179（+ `test/fence.test.mjs` 17 例：五态 × {回环, 非回环}、无宿主能力强制回环+单次 warn、
+  rejection 401 原样回传、connection 运行期摘除 fail closed、抛错 fail closed、12 条路由逐路对拍、
+  探测只跑一次）。门禁链 build → typecheck → test → `git diff --exit-code -- lib` 全绿。
+
 ## 0.17.0 (2026-11-28)
 
 **TypeScript 源码化（rc.1…rc.9 九片阶梯，对外发布面零变化）**——本仓历史上第一次有 src/：

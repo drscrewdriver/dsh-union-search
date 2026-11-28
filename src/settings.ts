@@ -36,6 +36,9 @@ export const Config = z.object({
   advanceFetchEnabled: z.boolean().default(true).volatile(),
   // SSRF 地址门的显式豁免（0.10.4）：true = 允许回环/内网目标（局域网设备抓取）；协议/重定向门不变
   advanceFetchAllowPrivate: z.boolean().default(false).volatile(),
+  // 设置桥准入加固（0.19.0，热生效）：false（默认）= 主闸交给宿主鉴权（反代部署可用）；
+  // true = 额外要求字面回环。宿主无鉴权能力时该开关无效（强制回环，安全底线）。
+  bridgeRestrictLoopback: z.boolean().default(false).volatile(),
   // 凭据化抓取（0.10.12）：UA/Referer 全局覆盖 + 按域 cookie，免浏览器的静态凭据车道（bcdp 浏览器链路互补）。
   advanceFetchUserAgent: z.string().default("").volatile(), // 空 = 内置默认 UA
   advanceFetchReferer: z.string().default("").volatile(), // 空 = 不发 Referer；可配防盗链图床/接口解锁

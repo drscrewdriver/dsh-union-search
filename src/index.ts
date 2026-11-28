@@ -10,6 +10,7 @@ import http from "node:http";
 import zlib from "node:zlib";
 import { exec } from "node:child_process";
 import { mcpCall, mcpContentText } from "./mcp_adapter.js";
+import { createBridgeGate, fenceMode, getRequestRejection, isLoopbackRequest, probeHostAdmission, type HostAdmission } from "./fence";
 import TurndownService from "turndown";
 import { gfm } from "@joplin/turndown-plugin-gfm";
 import * as cheerio from "cheerio";
@@ -112,27 +113,8 @@ function buildCacheKey(query, maxResults, timeRangeLabel, preferred, disabledEng
 //#region bridge
 const MAX_JSON_BODY_BYTES = 64 * 1024;
 
-function isLoopbackRequest(request) {
-  const address = request.socket.remoteAddress;
-  if (address !== "127.0.0.1" && address !== "::1" && address !== "::ffff:127.0.0.1") return false;
-  const host = request.headers.host;
-  if (typeof host !== "string") return false;
-  let hostUrl;
-  try {
-    hostUrl = new URL("http://" + host);
-  } catch {
-    return false;
-  }
-  if (hostUrl.hostname !== "127.0.0.1" && hostUrl.hostname !== "localhost" && hostUrl.hostname !== "[::1]") return false;
-  if (request.headers["sec-fetch-site"] === "cross-site") return false;
-  const origin = request.headers.origin;
-  if (origin === undefined) return true;
-  try {
-    return new URL(origin).host === hostUrl.host;
-  } catch {
-    return false;
-  }
-}
+// isLoopbackRequest 已迁至 src/fence.ts（0.18.0，闸门内核一并收口）：语义逐字不变，
+// 供 createBridgeGate 与设置桥注册点共用。
 
 function writeJson(res, status, body) {
   const payload = JSON.stringify(body);
@@ -172,7 +154,7 @@ function toView(descriptor) {
   };
 }
 
-function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCredentials, takeoverStatus) {
+function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCredentials, takeoverStatus, gate) {
   const allowlisted = () =>
     settings
       .describe({ redactSecrets: true })
@@ -472,24 +454,14 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
     },
   };
 
-  const guard = (req, res) => {
-    if (!isLoopbackRequest(req)) {
-      writeJson(res, 403, { error: "loopback requests only" });
-      return false;
-    }
-    if (req.method !== "POST") {
-      writeJson(res, 405, { error: "method not allowed: " + (req.method ?? "") });
-      return false;
-    }
-    return true;
-  };
-
+  // 0.18.0：12 条路由的准入统一由 createBridgeGate 产出（宿主鉴权优先、回环可选加固），
+  // 由注册点按宿主代次注入，路由本身保持裸 route（不带 auth 字段）。
   return [
     {
       kind: "exact",
       path: `${BRIDGE_PREFIX}/describe`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         writeJson(res, 200, await handlers.describe());
       },
     },
@@ -497,7 +469,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/mutate`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         if (body === undefined) {
           writeJson(res, 400, { ok: false, code: "settings-rejected", message: "malformed JSON body" });
@@ -510,7 +482,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/takeover-status`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         writeJson(res, 200, typeof takeoverStatus === "function" ? { ok: true, value: takeoverStatus() } : { ok: false, code: "not-wired", message: "takeover status unavailable" });
       },
     },
@@ -518,7 +490,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/credentials-status`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         writeJson(res, 200, await handlers.credentialsStatus());
       },
     },
@@ -526,7 +498,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/credentials-set`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         if (body === undefined) {
           writeJson(res, 400, { ok: false, code: "credentials-rejected", message: "malformed JSON body" });
@@ -539,7 +511,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/credentials-unset`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         if (body === undefined) {
           writeJson(res, 400, { ok: false, code: "credentials-rejected", message: "malformed JSON body" });
@@ -552,7 +524,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/check-update`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         writeJson(res, 200, await handlers.checkUpdate());
       },
     },
@@ -560,7 +532,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/update`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         writeJson(res, 200, await handlers.updatePlugin());
       },
     },
@@ -568,7 +540,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/raw-search`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         if (body === undefined) {
           writeJson(res, 400, { ok: false, code: "search-rejected", message: "malformed JSON body" });
@@ -581,7 +553,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/searxng-probe`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         if (body === undefined) {
           writeJson(res, 400, { ok: false, code: "probe-rejected", message: "malformed JSON body" });
@@ -594,7 +566,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/test-engines`,
       handler: async (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         const body = await readJsonBody(req);
         // 空体合法:缺省测全部启用引擎(与旧工具默认行为一致)
         writeJson(res, 200, await handlers.testEngines(body ?? {}));
@@ -604,7 +576,7 @@ function makeBridgeRoutes(settings, search, testEngine, runEngineTests, getCrede
       kind: "exact",
       path: `${BRIDGE_PREFIX}/debug-generation`,
       handler: (req, res) => {
-        if (!guard(req, res)) return;
+        if (!gate(req, res)) return;
         // compat-legacy 诊断:吐出本线 settings 服务的真实方法面(三代 waist 检测依据)
         const s = settings;
         const methods = new Set();
@@ -1275,12 +1247,40 @@ function apply(ctx, config) {
     }
   });
 
+  // ── 设置桥准入（0.18.0）─────────────────────────────────────────────────
+  // 宿主代次在 apply 期探测一次并缓存（探测会真实跑一遍 authorize 瀑布）。
+  let hostAdmission: HostAdmission = "none";
+  let admissionProbed = false;
+  let warnedLoopbackFallback = false;
+
   ctx.inject(["webServer", "settings"], (sctx) => {
     sctx.effect(() => {
       // [0.10.17] settings guaranteed available here, initial takeover fires in inject
       try { applySearchTakeover(); } catch (e) {
         sctx.logger.warn("union-search: takeover in inject failed (non-fatal): " + (e && e.message || e));
       }
+      if (!admissionProbed) {
+        admissionProbed = true;
+        hostAdmission = probeHostAdmission(ctx);
+      }
+      // 结构模式（不含开关态）：决定路由是否声明 auth:'required'。
+      const structuralMode = fenceMode(hostAdmission, false);
+      // 无宿主鉴权能力 → 强制回环，与 bridgeRestrictLoopback 取值无关（安全底线）。
+      if (hostAdmission === "none" && !warnedLoopbackFallback) {
+        warnedLoopbackFallback = true;
+        sctx.logger.warn(
+          "union-search: host exposes no request admission (no webserver/authorize hook, no connection.requestRejection); " +
+          "settings bridge stays loopback-only and reverse-proxy deployments will get 403"
+        );
+      }
+      const gate = createBridgeGate({
+        admission: hostAdmission,
+        // 热生效：每请求读一次开关，不重注册路由（task_7）。
+        restrictLoopback: () => current().bridgeRestrictLoopback === true,
+        isLoopback: isLoopbackRequest,
+        resolveRejection: () => getRequestRejection(ctx),
+        writeJson,
+      });
       const disposers = makeBridgeRoutes(
         sctx.settings,
         (request) => provider.search(request, undefined),
@@ -1292,8 +1292,14 @@ function apply(ctx, config) {
         },
         (args) => runEngineTests(args),
         getCredentials,
-        () => ({ ...takeoverSelfCheck, autoRestore: current().autoRestoreOnDispose !== false, pinned: pinnedSnapshot })
-      ).map((route) => sctx.webServer.register(route));
+        () => ({ ...takeoverSelfCheck, autoRestore: current().autoRestoreOnDispose !== false, pinned: pinnedSnapshot }),
+        gate
+      ).map((route) =>
+        // 0.2.3+ 的 auth 由宿主执行；0.2.2 及更早不认该字段（静默忽略），闸门在 gate 里。
+        structuralMode === "authorize"
+          ? sctx.webServer.register({ ...route, auth: "required" })
+          : sctx.webServer.register(route)
+      );
       return () => {
         for (const dispose of disposers) dispose();
       };

@@ -49,6 +49,7 @@ dsh 默认的搜索 provider 依赖 DeepSeek 官方 API key（`DEEPSEEK_API_KEY`
 - **平台搜索（platform_search）** —— 搜 GitHub / V2EX / B站 / Reddit / Hacker News / Stack Overflow / 维基百科 / npm / YouTube / Vimeo（公开 API 或免 key 抓取，零依赖）
 - **视频搜索（video_search）** —— 跨站找视频：Bing Videos + DuckDuckGo Videos（免 key，失败互相回退），返回视频链接、标题与来源/时长等元信息
 - **干净集成** —— 实现官方 `WebSearchProvider` seam 接口，与官方插件共存
+- **设置桥准入（0.19.0）** —— 设置页「设置桥只接受本机回环请求」开关（`bridgeRestrictLoopback`，默认关）。插件的 12 条设置桥路由（`/api/dsh-union-search-settings/*`，设置页与卡片用它读写配置）原本只接受字面回环请求，在**反向代理部署**下必然 403（网关地址 + 公开域名两条都判否）。现在主闸交给宿主自己的请求鉴权：0.2.3+ 走 `webserver/authorize` 瀑布（路由声明 `auth: 'required'`，浏览器登录态 cookie + SameSite=Strict 同时挡住 CSRF），0.1.2-rc.1…0.2.2 走 `connection.requestRejection`——于是反代下设置页恢复可用，且校验比回环更严。默认**不再**限制回环；需要额外加固时开启本开关（非回环请求即使带合法 cookie 也 403）。**安全底线**：宿主若既无 `webserver/authorize` 也无 `requestRejection`（0.1.0-rc.7 / 0.1.1），则无论开关如何都强制回环并 warn 一次——宁可反代不可用，不可裸奔。
 - **屏蔽系统自带搜索** —— 设置页「屏蔽系统自带搜索」开关（`blockSystemSearch`）：开启后强制接管 `web_search`，并把出厂官方搜索引擎 `deepseek-official` / rc.2 起的 `deepseek-search-api` 从所有引擎链与接管判据中剔除；保存即生效
 - **SearXNG 返回语言可锁定** —— 设置项 `searxngLanguage`（默认 `auto`）：自动档按 query 文字检测（假名→ja、谚文→ko、西里尔→ru、汉字→zh-CN，判不出落设置页语言兜底）；选具体值（zh-CN/zh-TW/en/ja/ko/ru/de/fr/es/all）则锁定不随 query 变化；非法 locale 自动归一防 400
 - **SearXNG 多实例综合** —— 自定义列表配置 ≥2 个端点时，自动向前两个端点并发双发请求，等两份请求都返回后按 URL 合并去重，双实例共同命中的条目优先；两个都失败才顺序回退剩余实例
@@ -290,6 +291,7 @@ fetchTakeover: false        # true = 注册并钉选 web.fetchProvider = union-s
 browserFetchTier: false     # true = 登录墙/反爬/JS 空壳页命中时借 dsh-browser-cdp（≥1.15.0）的已登录浏览器重抓（带 cookie，默认关）
 browserFetchAllowHosts: ""  # 升级档域名白名单（逗号分隔后缀，含子域）；空 = 不限制（仍受总开关）
 advanceFetchAllowPrivate: false # true = 放行 advance_fetch 访问回环/内网（局域网设备场景；协议/重定向门不变）
+bridgeRestrictLoopback: false # true = 设置桥额外要求字面回环（反代部署将不可用）；默认 false = 主闸交给宿主登录鉴权
 advanceFetchUserAgent: ""   # 空 = 内置默认 UA；可自定义用于按 UA 拦截的站
 advanceFetchReferer: ""     # 空 = 不发 Referer；可配防盗链图床/接口解锁
 advanceFetchCookieMap: ""   # 逐行 `域名 cookie串`（# 注释），如 weibo.com SUB=xxx；仅在目标匹配该域时附带，重定向换域不外流
@@ -707,6 +709,7 @@ fetchTakeover: false        # true = register & pin web.fetchProvider = union-se
 browserFetchTier: false     # true = re-fetch login-walled / anti-bot / JS-shell pages through dsh-browser-cdp's logged-in browser (>= 1.15.0); off by default
 browserFetchAllowHosts: ""  # browser-tier domain allowlist (comma-separated suffixes, subdomains included); empty = unrestricted (master switch still gates it)
 advanceFetchAllowPrivate: false # true = allow advance_fetch to reach loopback/private targets (LAN devices; protocol/redirect gates unchanged)
+bridgeRestrictLoopback: false # true = additionally require literal loopback for the settings bridge (reverse proxies stop working); false = admission delegated to the host login auth
 advanceFetchUserAgent: ""   # empty = built-in UA; customize for sites that block by User-Agent
 advanceFetchReferer: ""     # empty = no Referer; useful for hotlink-protected image hosts/APIs
 advanceFetchCookieMap: ""   # one `domain cookie-string` per line (# comments), e.g. weibo.com SUB=xxx; attached only when the target matches the domain, never forwarded across cross-domain redirects
