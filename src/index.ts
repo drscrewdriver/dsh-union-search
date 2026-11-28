@@ -1266,13 +1266,16 @@ function apply(ctx, config) {
       // 结构模式（不含开关态）：决定路由是否声明 auth:'required'。
       const structuralMode = fenceMode(hostAdmission, false);
       // 无宿主鉴权能力 → 强制回环，与 bridgeRestrictLoopback 取值无关（安全底线）。
-      if (hostAdmission === "none" && !warnedLoopbackFallback) {
+      // 判词推迟到首个「无宿主闸」的请求（见 createBridgeGate.onLoopbackFallback）：
+      // apply 期 connection 往往还没 provide，在那里 warn 会误报。
+      const warnLoopbackFallback = () => {
+        if (warnedLoopbackFallback) return;
         warnedLoopbackFallback = true;
         sctx.logger.warn(
           "union-search: host exposes no request admission (no webserver/authorize hook, no connection.requestRejection); " +
           "settings bridge stays loopback-only and reverse-proxy deployments will get 403"
         );
-      }
+      };
       const gate = createBridgeGate({
         admission: hostAdmission,
         // 热生效：每请求读一次开关，不重注册路由（task_7）。
@@ -1280,6 +1283,7 @@ function apply(ctx, config) {
         isLoopback: isLoopbackRequest,
         resolveRejection: () => getRequestRejection(ctx),
         writeJson,
+        onLoopbackFallback: warnLoopbackFallback,
       });
       const disposers = makeBridgeRoutes(
         sctx.settings,

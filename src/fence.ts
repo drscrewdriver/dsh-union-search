@@ -60,6 +60,31 @@ export function fenceMode(admission: HostAdmission, restrictLoopback: boolean): 
   return "loopback";
 }
 
+/**
+ * 读一个服务，**不依赖 inject 声明**（0.19.1 修）。
+ *
+ * 0.19.0 用 `ctx.get("connection")` 取连接服务，但 `get` 走的是 Proxy 的
+ * 「未注入即抛」陷阱——本插件的 inject 列表只有 `webServer`/`settings`，
+ * 于是 `connection` 永远抛错被 catch 吞掉，`requestRejection` 分支成了死代码：
+ * 真机（dsh 0.2.1-rc.5）上探测一律回 "none"，被强制回环，反代部署仍然 403。
+ *
+ * `ctx.reflect.get(name)` 是 cordis 提供的「不需要 inject 声明」的读取口，用它优先；
+ * 老版 cordis 没有 reflect 时再退回 `get`（至少被 inject 过的宿主仍可用）。
+ */
+function readService(ctx, name) {
+  try {
+    const reflect = ctx?.reflect;
+    if (reflect !== undefined && reflect !== null && typeof reflect.get === "function") {
+      const service = reflect.get(name);
+      if (service !== undefined && service !== null) return service;
+    }
+  } catch {}
+  try {
+    if (typeof ctx?.get === "function") return ctx.get(name);
+  } catch {}
+  return undefined;
+}
+
 function detectHostAdmission(ctx): HostAdmission {
   // ① 0.2.3+：connection 注册了 webserver/authorize 钩子 → bail 返回非 undefined。
   try {
@@ -80,10 +105,8 @@ function detectHostAdmission(ctx): HostAdmission {
     }
   } catch {}
   // ② 0.1.2-rc.1 … 0.2.2-rc.5：connection 服务提供 requestRejection。
-  try {
-    const connection = typeof ctx?.get === "function" ? ctx.get("connection") : undefined;
-    if (connection && typeof connection.requestRejection === "function") return "rejection";
-  } catch {}
+  const connection = readService(ctx, "connection");
+  if (connection && typeof connection.requestRejection === "function") return "rejection";
   // ③ 0.1.0-rc.7 / 0.1.1：两代机制皆无。
   return "none";
 }
@@ -105,12 +128,10 @@ export function probeHostAdmission(ctx): HostAdmission {
  * 所以每请求解析一次；未注入时 ctx.get 会抛，包 try（沿用 index.ts:1415 的写法）。
  */
 export function getRequestRejection(ctx) {
-  try {
-    const connection = typeof ctx?.get === "function" ? ctx.get("connection") : undefined;
-    if (connection && typeof connection.requestRejection === "function") {
-      return (request) => connection.requestRejection(request);
-    }
-  } catch {}
+  const connection = readService(ctx, "connection");
+  if (connection && typeof connection.requestRejection === "function") {
+    return (request) => connection.requestRejection(request);
+  }
   return null;
 }
 
@@ -123,6 +144,12 @@ export interface BridgeGateOptions {
   /** 每请求解析宿主拒绝器（connection 可能晚挂载）；返回 null 表示宿主闸不在。 */
   resolveRejection: () => ((request) => number | undefined) | null;
   writeJson: (res, status: number, body) => void;
+  /**
+   * 首次走到「无宿主闸 → 强制回环」时回调一次（0.19.1）。
+   * 判词放在这里而不是 apply 期：apply 期 connection 常常还没 provide，
+   * 在那里下结论会把可用宿主误报成「无鉴权能力」（0.19.0 真机就踩了这个假警报）。
+   */
+  onLoopbackFallback?: () => void;
 }
 
 /**
@@ -131,9 +158,17 @@ export interface BridgeGateOptions {
  */
 export function createBridgeGate(options: BridgeGateOptions) {
   const { admission, restrictLoopback, isLoopback, resolveRejection, writeJson } = options;
+  let warnedFallback = false;
   return (req, res) => {
     let hostGated = false;
-    if (admission === "rejection") {
+    if (admission === "authorize") {
+      // 宿主在路由层按 auth:'required' 判（0.2.3+ 无钩子时默认 503，fail closed）。
+      hostGated = true;
+    } else {
+      // rejection 代次：每请求解析一次拒绝器。
+      // 同时承担「探测时为 none、connection 后挂载」的自愈：apply 期 connection 常常
+      // 还没 provide（本插件 apply 早于它），一次探测就永久判 none 会把可用宿主降级成
+      // 强制回环（0.19.0 真机症状）。拒绝器一旦可取，就按宿主闸处理。
       const reject = resolveRejection();
       if (typeof reject === "function") {
         hostGated = true;
@@ -149,11 +184,14 @@ export function createBridgeGate(options: BridgeGateOptions) {
           return false;
         }
       }
-    } else if (admission === "authorize") {
-      // 宿主在路由层按 auth:'required' 判（0.2.3+ 无钩子时默认 503，fail closed）。
-      hostGated = true;
     }
     const loopbackRequired = !hostGated || restrictLoopback() === true;
+    if (!hostGated && !warnedFallback) {
+      warnedFallback = true;
+      try {
+        options.onLoopbackFallback?.();
+      } catch {}
+    }
     if (loopbackRequired && !isLoopback(req)) {
       writeJson(res, 403, { error: "loopback requests only" });
       return false;

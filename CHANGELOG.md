@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.19.1 (2026-11-29)
+
+**真机修复：0.19.0 的设置桥在真实宿主上仍然全 403——`ctx.get('connection')` 拿不到服务。**
+
+0.19.0 的闸门内核逻辑正确、单测 180 例全绿，但装机到 dsh 0.2.1-rc.5 真机后，
+LAN / 反代请求仍全部 `403 loopback requests only`。两处叠加：
+
+- **`ctx.get` 是 Proxy「未 inject 即抛」**。本插件 inject 只有 `["webServer","settings"]`，
+  所以 `ctx.get("connection")` 必然抛错，被 try/catch 吞掉后 `requestRejection` 分支成了死代码，
+  探测恒判 `none` → 强制回环。改用 **`ctx.reflect.get(name)`**（cordis 明确的「不需要 inject 声明」
+  读取口，`@deepseek-ai/cordis/lib/types/reflect.d.ts`），取不到再退回 `get`。
+- **apply 期探测过早**。apply 时 `connection` 往往还没 provide，一次探测被 WeakMap 永久缓存。
+  闸门改为：非 `authorize` 代次**每请求解析一次拒绝器**，解析到即按宿主闸处理（自愈路径）。
+
+另：`hostAdmission === 'none'` 的 warn 从 apply 期挪到**首个无宿主闸的请求**
+（`createBridgeGate.onLoopbackFallback`），不再误报可用宿主「无鉴权能力」。
+
+四形态真机实测（dsh 0.2.1-rc.5，隔离 profile `us-verify`，真浏览器会话 cookie）：
+
+| 形态 | 期望 | 0.19.0 | 0.19.1 |
+|---|---|---|---|
+| 直连回环 + 开关关 | 200 | 200 | 200 |
+| 直连回环 + 开关开 | 200 | 200 | 200 |
+| **LAN IP + 开关关** | **200** | **403** | **200** |
+| LAN IP + 开关开 | 403 | 403 | 403 |
+
+附带实测：无 cookie 时宿主先拒 401（不裸奔）；mutate 改开关**下一发即生效**（热生效，不重注册路由）；
+开关落盘 `cordis.patch.yml`；`describe` 返回体携带 `bridgeRestrictLoopback` 且默认 `false`。
+
+门禁：build ✓ / typecheck 0 错 ✓ / test 180 ✓（未新增测试文件，导出面仍 **122**）。
+
 ## 0.19.0 (2026-11-29)
 
 **设置桥准入改为「宿主鉴权优先，回环可选加固」——反代部署下 12 条设置桥路由不再必然 403。**
